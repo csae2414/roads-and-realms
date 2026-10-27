@@ -328,7 +328,40 @@ fn window_icon() -> Option<eframe::egui::IconData> {
     Some(eframe::egui::IconData { rgba: img.into_raw(), width, height })
 }
 
+/// A failure that ends the game before or while it runs: written to `error.log` beside the
+/// saves, and on Windows shown in a message box (the game has no console there, so a failure
+/// to open the window said nothing at all; owner's Windows test, 2026-10-27).
+fn report_fatal(what: &str) {
+    let log = app::App::save_path().with_file_name("error.log");
+    if let Some(dir) = log.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(&log, format!("{what}\n"));
+    eprintln!("{what}");
+    let text = format!("Roads & Realms could not run:\n\n{what}\n\n(also written to {})", log.display());
+    message_box(&text);
+}
+
+#[cfg(windows)]
+fn message_box(text: &str) {
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, kind: u32) -> i32;
+    }
+    let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let (text, caption) = (wide(text), wide("Roads & Realms"));
+    // SAFETY: two NUL-terminated UTF-16 strings that outlive the call; no owner window.
+    unsafe {
+        MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), 0x10);
+    }
+}
+
+#[cfg(not(windows))]
+fn message_box(_text: &str) {}
+
 fn main() -> eframe::Result<()> {
+    // a panic, anywhere, leaves its message and place behind
+    std::panic::set_hook(Box::new(|info| report_fatal(&info.to_string())));
     i18n::init_from_env();
     let args = parse_args();
     let options = eframe::NativeOptions {
@@ -343,7 +376,12 @@ fn main() -> eframe::Result<()> {
             .with_icon(window_icon().unwrap_or_default()),
         ..Default::default()
     };
-    eframe::run_native("Roads & Realms", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, args)))))
+    let run = eframe::run_native("Roads & Realms", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, args)))));
+    // (no window at all: often no OpenGL 2 driver, a virtual machine or a remote desktop)
+    if let Err(e) = &run {
+        report_fatal(&format!("The window could not be opened: {e}"));
+    }
+    run
 }
 
 #[cfg(test)]
