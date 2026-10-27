@@ -25,3 +25,8 @@ workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+# (eframe turns wgpu's default backends off, leaving Windows with Vulkan only: DirectX 12 too,
+# whose software renderer WARP draws even without a graphics driver, as in many virtual machines)
+[target.'cfg(windows)'.dependencies]
+wgpu = { version = "24", default-features = false, features = ["dx12"] }
