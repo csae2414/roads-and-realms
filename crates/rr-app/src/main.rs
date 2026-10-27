@@ -359,6 +359,29 @@ fn message_box(text: &str) {
 #[cfg(not(windows))]
 fn message_box(_text: &str) {}
 
+/// How the game draws: through OpenGL (glow), as it always has; RR_RENDERER=wgpu (DirectX 12 on
+/// Windows, else Vulkan or OpenGL) when OpenGL failed (`main` starts the game again so), or to
+/// test it.
+fn renderer() -> eframe::Renderer {
+    match std::env::var("RR_RENDERER").as_deref() {
+        Ok("wgpu") => eframe::Renderer::Wgpu,
+        _ => eframe::Renderer::Glow,
+    }
+}
+
+/// The game once more, with wgpu, when OpenGL could not open the window (a PC with no OpenGL 2
+/// driver said "egui_glow requires opengl 2.0+"; owner's Windows test, 2026-10-27): a fresh
+/// process, as the window system starts once per process. Its exit code, if it ran.
+fn retry_with_wgpu() -> Option<i32> {
+    if std::env::var_os("RR_RENDERER").is_some() {
+        return None;
+    }
+    let exe = std::env::current_exe().ok()?;
+    let status =
+        std::process::Command::new(exe).args(std::env::args_os().skip(1)).env("RR_RENDERER", "wgpu").status().ok()?;
+    Some(status.code().unwrap_or(1))
+}
+
 fn main() -> eframe::Result<()> {
     // a panic, anywhere, leaves its message and place behind
     std::panic::set_hook(Box::new(|info| report_fatal(&info.to_string())));
@@ -374,12 +397,17 @@ fn main() -> eframe::Result<()> {
             // the launcher's name: the desktop matches the window to `roads-and-realms.desktop`
             .with_app_id(APP_ID)
             .with_icon(window_icon().unwrap_or_default()),
+        renderer: renderer(),
         ..Default::default()
     };
     let run = eframe::run_native("Roads & Realms", options, Box::new(move |cc| Ok(Box::new(app::App::new(cc, args)))));
     // (no window at all: often no OpenGL 2 driver, a virtual machine or a remote desktop)
     if let Err(e) = &run {
-        report_fatal(&format!("The window could not be opened: {e}"));
+        if let Some(code) = retry_with_wgpu() {
+            std::process::exit(code);
+        }
+        let how = if matches!(renderer(), eframe::Renderer::Wgpu) { "wgpu" } else { "OpenGL" };
+        report_fatal(&format!("The window could not be opened ({how}): {e}"));
     }
     run
 }
