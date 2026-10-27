@@ -60,7 +60,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: roads-and-realms-*.*
+          # (the archives only: the unpacked folder's name has a dot too, `-v0.9.56`)
+          path: |
+            roads-and-realms-*.tar.gz
+            roads-and-realms-*.zip
           if-no-files-found: error
 
   release:
@@ -75,5 +78,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" roads-and-realms-* --repo "$GITHUB_REPOSITORY" \
+          gh release create "$GITHUB_REF_NAME" roads-and-realms-*.tar.gz roads-and-realms-*.zip --repo "$GITHUB_REPOSITORY" \
             --title "Roads & Realms $GITHUB_REF_NAME" --generate-notes
