@@ -2008,7 +2008,8 @@ impl View<'_> {
         let Some((t, r)) = holy_rect(tex, at, self.cam.zoom, god) else { return false };
         let full = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
         painter.image(t, r, full, Color32::WHITE);
-        if mine {
+        // (Jupiter's: his vultures)
+        if mine && god == 0 {
             let z = self.cam.zoom;
             let vulture = Color32::from_rgb(70, 58, 50);
             for i in 0..5 {

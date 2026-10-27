@@ -1110,7 +1110,7 @@ pub fn windows(app: &mut App, ctx: &egui::Context) {
                     "Your rivals live far away, across the sea or beyond the desert: the war comes late. Grow toward them, or build a harbor, a shipyard and an expedition to reach them sooner.",
                 )).color(Color32::from_rgb(240, 190, 120)));
             } else if crate::ai_level(&app.args) != rr_ai::Level::Easy
-                && m.cast_at(crate::ai_level(&app.args)).iter().any(|s| *s != crate::missions::Stance::Peaceful)
+                && m.cast_at(crate::ai_level(&app.args)).iter().any(|s| s.hostile())
             {
                 // (not where everyone keeps the peace: the first valley said both; new-player
                 // round 11, #3)
@@ -3606,10 +3606,77 @@ pub(crate) fn set_action(app: &mut App, a: Action) {
     app.ui.action = Some(a);
 }
 
-/// The kept buildings' windows, then the action window.
+/// The kept buildings' windows, then the action window (a holy place's own window there).
 fn building_windows(app: &mut App, ctx: &egui::Context) {
     kept_windows(app, ctx);
-    action_window(app, ctx);
+    match app.ui.action.and_then(|a| rr_world::holy_god(app.sim.world().obj(a.node)).map(|g| (a.node, g))) {
+        Some((node, god)) => holy_window(app, ctx, node, god),
+        None => action_window(app, ctx),
+    }
+}
+
+/// What a god accepts as an offering, if anything (Juno of Veii: bread).
+pub fn offering(god: u8) -> Option<rr_rules::Ware> {
+    match god {
+        2 => Some(rr_rules::Ware::Bread),
+        // (the sacred geese of the Capitol)
+        3 => Some(rr_rules::Ware::Grain),
+        // (Neptune's shrine on the cape)
+        6 => Some(rr_rules::Ware::Fish),
+        _ => None,
+    }
+}
+
+/// How many of a ware one offering gives.
+const OFFER_N: u32 = 5;
+
+/// A holy place's window: what it is and who holds it (as the hover says), its god's favour,
+/// and where the god takes offerings, a button to offer them.
+fn holy_window(app: &mut App, ctx: &egui::Context, node: MapCoord, god: u8) {
+    let lines = crate::hover::lines(&app.sim, app.player, node, app.session.favour);
+    let title = lines.first().cloned().unwrap_or_default();
+    let mut open = true;
+    let mut cmd = None;
+    egui::Window::new(title)
+        .id(egui::Id::new("holy_window"))
+        .open(&mut open)
+        .collapsible(false)
+        .resizable(false)
+        .default_pos(free_spot(
+            egui::Rect::from_center_size(ctx.screen_rect().center(), Vec2::splat(10.0)),
+            ctx.screen_rect(),
+        ))
+        .show(ctx, |ui| {
+            ui.set_max_width(320.0);
+            for l in lines.iter().skip(1) {
+                ui.label(l);
+            }
+            let Some(ware) = offering(god) else { return };
+            ui.separator();
+            ui.label(crate::i18n::show(&crate::i18n::msg("Favour: {1} of 100", &[&app.session.favour.to_string()])));
+            let held = app.sim.world().holy_holder(node) == rr_world::Holder::Player(app.player);
+            let have = app.sim.player_inventory(app.player).ware(ware);
+            let label =
+                crate::i18n::msg("Offer {1} {2}", &[&OFFER_N.to_string(), rr_game::ware_name_en(ware).as_str()]);
+            let why = if !held {
+                crate::i18n::tr("Your land must lie all around it first.")
+            } else {
+                crate::i18n::tr("From your warehouses, the castle first.")
+            };
+            let b = ui.add_enabled(held && have >= OFFER_N, egui::Button::new(crate::i18n::show(&label)));
+            if b.on_hover_text(why).on_disabled_hover_text(why).clicked() {
+                cmd = Some(Cmd::Offer { at: node, ware, n: OFFER_N });
+            }
+            ui.label(
+                RichText::new(crate::i18n::show(&crate::i18n::msg("In store: {1}", &[&have.to_string()]))).small(),
+            );
+        });
+    if let Some(c) = cmd {
+        app.cmd(c);
+    }
+    if !open {
+        app.ui.action = None;
+    }
 }
 
 /// The buildings' windows kept open (`Ui::kept`): each where it stood, until closed or its

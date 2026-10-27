@@ -27,11 +27,15 @@ pub struct Mission {
     /// The rivals place no new military building while they hold this share of the map's land,
     /// in percent (0: no cap), so a land goal can't become impossible.
     pub land_cap: u32,
-    /// The map: the seven hills by the Tiber (`rr_mapgen::rome`), at `map_size`.
-    pub seven_hills: bool,
+    /// The map: the seven hills by the Tiber in one of their layouts (`rr_mapgen::rome`), at
+    /// `map_size`.
+    pub rome: Option<rr_mapgen::rome::RomeMap>,
     /// The rivals keep the peace at every level, as the cast says (a teaching mission: nothing
     /// can be lost while learning).
     pub gentle: bool,
+    /// The hostile rivals' truce in minutes, if not the usual (on easy half as long again; the
+    /// Gauls come early: with 30 minutes a 45-minute stand had almost no war).
+    pub truce: Option<u32>,
 }
 
 /// The world campaign's medals: gold within 90 minutes, silver within 120, bronze within 180.
@@ -70,7 +74,7 @@ impl Mission {
                 let order = goal.into_iter().chain((0..cast.len()).filter(|i| Some(*i) != goal));
                 let mut fighting = 0;
                 for i in order {
-                    if cast[i] != Stance::Peaceful {
+                    if cast[i].hostile() {
                         fighting += 1;
                         if fighting > 2 {
                             cast[i] = Stance::Peaceful;
@@ -102,8 +106,9 @@ pub const MISSIONS: [Mission; 6] = [
         map_size: 64,
         medals: WORLD_MEDALS,
         land_cap: 0,
-        seven_hills: false,
+        rome: None,
         gentle: true,
+        truce: None,
     },
     Mission {
         key: "europe",
@@ -126,8 +131,9 @@ pub const MISSIONS: [Mission; 6] = [
         map_size: 0,
         medals: WORLD_MEDALS,
         land_cap: 0,
-        seven_hills: false,
+        rome: None,
         gentle: false,
+        truce: None,
     },
     Mission {
         key: "mediterranean",
@@ -150,8 +156,9 @@ pub const MISSIONS: [Mission; 6] = [
         map_size: 0,
         medals: WORLD_MEDALS,
         land_cap: 0,
-        seven_hills: false,
+        rome: None,
         gentle: false,
+        truce: None,
     },
     Mission {
         key: "northamerica",
@@ -174,8 +181,9 @@ pub const MISSIONS: [Mission; 6] = [
         map_size: 0,
         medals: WORLD_MEDALS,
         land_cap: 0,
-        seven_hills: false,
+        rome: None,
         gentle: false,
+        truce: None,
     },
     Mission {
         key: "fareast",
@@ -201,8 +209,9 @@ pub const MISSIONS: [Mission; 6] = [
         map_size: 0,
         medals: WORLD_MEDALS,
         land_cap: 0,
-        seven_hills: false,
+        rome: None,
         gentle: false,
+        truce: None,
     },
     Mission {
         key: "north",
@@ -225,8 +234,9 @@ pub const MISSIONS: [Mission; 6] = [
         map_size: 0,
         medals: WORLD_MEDALS,
         land_cap: 0,
-        seven_hills: false,
+        rome: None,
         gentle: false,
+        truce: None,
     },
 ];
 
@@ -243,6 +253,15 @@ pub enum Stance {
     Alone,
     /// Leaves you alone (defends itself, may fight the others).
     Peaceful,
+    /// Allied with you (your team: the Roman campaign's allied towns of the Appian Way).
+    Friend,
+}
+
+impl Stance {
+    /// At war with you.
+    pub fn hostile(self) -> bool {
+        matches!(self, Stance::Allied | Stance::Alone)
+    }
 }
 
 /// The nodes each player owns.
@@ -264,12 +283,28 @@ pub fn land_share(sim: &rr_sim::Sim, me: u8) -> u32 {
     (ours * 100).checked_div(total).unwrap_or(0)
 }
 
+/// How many allied realms `me`'s land touches (a node of ours beside a node of theirs).
+pub fn reached_allies(sim: &rr_sim::Sim, me: u8) -> u32 {
+    let w = sim.world();
+    let g = w.grid();
+    let mut touched = std::collections::BTreeSet::new();
+    for p in g.coords().filter(|p| w.owner(*p) == Some(me)) {
+        for q in g.neighbors(p) {
+            if let Some(o) = w.owner(q).filter(|o| *o != me && sim.are_allies(*o, me)) {
+                touched.insert(o);
+            }
+        }
+    }
+    touched.len() as u32
+}
+
 /// The team of a mission's rival `i` (you are team 0).
 pub fn rival_team(cast: &[Stance], i: usize) -> u8 {
     match cast[i] {
         Stance::Allied => 1,
         // (a peaceful rival on the allies' team lost its peace with them: QA round 8, #5)
         Stance::Alone | Stance::Peaceful => 2 + i as u8,
+        Stance::Friend => 0,
     }
 }
 
@@ -290,6 +325,10 @@ pub enum Objective {
     /// This share of the whole map's land, in percent (`rr_ai::map_land_share`): with two
     /// realms a share of the land the players hold is met at the start.
     HoldMapLand(u32),
+    /// This many rival military buildings taken or burnt (the statistics' "vanquished").
+    Vanquish(u32),
+    /// This many allied realms reached: our land touches theirs (the Appian Way's towns).
+    Reach(u32),
 }
 
 /// How far a goal is: met or not, and the tracker's line (a stored message, see `msg`).
@@ -345,6 +384,22 @@ pub fn progress(obj: Objective, sim: &rr_sim::Sim, me: u8) -> Progress {
             };
             Progress { met: have >= n, line }
         }
+        Objective::Reach(n) => {
+            let done = reached_allies(sim, me);
+            Progress {
+                met: done >= n,
+                line: msg("Goal: reach {1} allied towns ({2} so far)", &[&n.to_string(), &done.to_string()]),
+            }
+        }
+        Objective::Vanquish(n) => {
+            let done = players.get(me as usize).map_or(0, |p| p.stats.vanquished);
+            let line = if n == 1 {
+                msg("Goal: take one rival military building ({1} so far)", &[&done.to_string()])
+            } else {
+                msg("Goal: take {1} rival military buildings ({2} so far)", &[&n.to_string(), &done.to_string()])
+            };
+            Progress { met: done >= n, line }
+        }
         Objective::HoldMapLand(percent) => {
             let now = rr_ai::map_land_share(sim, me);
             Progress {
@@ -381,28 +436,215 @@ pub fn unlocked(key: &str, won: &[String]) -> bool {
 }
 
 /// The Roman campaign's chapters in order (docs/CAMPAIGN-ROME.md; more as they are built).
-pub const ROME: [&str; 1] = ["augury"];
+pub const ROME: [&str; 10] =
+    ["augury", "sabines", "veii", "gauls", "appian", "pyrrhus", "mylae", "hannibal", "carthage", "janus"];
 
 /// The Roman campaign: real history from the founding of the city to Augustus, one chapter
 /// per skill, gentle first (docs/CAMPAIGN-ROME.md).
-pub const ROME_MISSIONS: [Mission; 1] = [Mission {
-    key: "augury",
-    title: "The Augury",
-    briefing: "Two brothers stand on two hills above the Tiber, Romulus and Remus. Both want to found the city, and they leave it to the gods: each watches the sky from his own hill for a sign. You are Romulus, on the Palatine. Remus builds on the Aventine, at peace with you.\n\nHere you learn how a realm grows: woodcutters and a quarry, a sawmill, roads that carry everything, and guardhouses that push your border over the hills. Whoever holds the hills will hold the city.",
-    goal: "Goal: hold 35 % of the land.",
-    objective: Objective::HoldMapLand(35),
-    cast: &[Stance::Peaceful],
-    hint: "The Roman campaign begins: build, connect and grow over the seven hills.",
-    far: false,
-    invader: None,
-    you: ("Romulus", Nation::Romans),
-    rivals: &[("Remus", Nation::Romans)],
-    // (56 nodes: the 52 soldiers of the start hold 35 % with posts to spare; on 64 the player's
-    // stand-in ran out at 30-36 %, there being no mountains for weapons)
-    map_size: 56,
-    medals: [40, 60, 90],
-    // (Remus stops at 35 %: the 35 % of the goal always stay within reach)
-    land_cap: 35,
-    seven_hills: true,
-    gentle: true,
-}];
+pub const ROME_MISSIONS: [Mission; 10] = [
+    Mission {
+        key: "augury",
+        title: "The Augury",
+        briefing: "Two brothers stand on two hills above the Tiber, Romulus and Remus. Both want to found the city, and they leave it to the gods: each watches the sky from his own hill for a sign. You are Romulus, on the Palatine. Remus builds on the Aventine, at peace with you.\n\nHere you learn how a realm grows: woodcutters and a quarry, a sawmill, roads that carry everything, and guardhouses that push your border over the hills. Whoever holds the hills will hold the city.",
+        goal: "Goal: hold 35 % of the land.",
+        objective: Objective::HoldMapLand(35),
+        cast: &[Stance::Peaceful],
+        hint: "The Roman campaign begins: build, connect and grow over the seven hills.",
+        far: false,
+        invader: None,
+        you: ("Romulus", Nation::Romans),
+        rivals: &[("Remus", Nation::Romans)],
+        // (56 nodes: the 52 soldiers of the start hold 35 % with posts to spare; on 64 the player's
+        // stand-in ran out at 30-36 %, there being no mountains for weapons)
+        map_size: 56,
+        medals: [40, 60, 90],
+        // (Remus stops at 35 %: the 35 % of the goal always stay within reach)
+        land_cap: 35,
+        rome: Some(rr_mapgen::rome::RomeMap::Augury),
+        gentle: true,
+        truce: None,
+    },
+    Mission {
+        key: "sabines",
+        title: "The Sabine Peace",
+        briefing: "Rome has walls now, and too few women. At the feast of Consus your men seized the Sabines' daughters and made them their wives, and their fathers have not forgiven it. The Sabine king Titus Tatius rules the Quirinal across the valley, at peace with you for now.\n\nHere you learn war: a brewery for beer, swords and shields from your store, soldiers recruited in the castle, and your first attack. Keep your posts manned: Tatius will not wait forever. Between the two hills stands Concordia's shrine: where your land meets the Sabines' there, the women carry gifts across, and the peace comes sooner.",
+        goal: "Goal: take two Sabine military buildings.",
+        objective: Objective::Vanquish(2),
+        cast: &[Stance::Peaceful],
+        hint: "Chapter II: soldiers, a betrayal, and a first war that ends in peace.",
+        far: false,
+        invader: None,
+        you: ("Romulus", Nation::Romans),
+        rivals: &[("Titus Tatius", Nation::Romans)],
+        map_size: 64,
+        medals: [40, 60, 90],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Sabines),
+        gentle: true,
+        truce: None,
+    },
+    Mission {
+        key: "veii",
+        title: "Veii",
+        briefing: "Veii, the rich Etruscan city, stands on its rock across the valley, behind posts manned by trained soldiers. Its king will not wait for you: after the truce, Veii fights.\n\nHere you learn the weapons chain: send geologists into the hills, build mines and feed their miners (fish, meat or bread), smelt iron with coal, and let the armory make swords and shields. Only an army of many soldiers takes Veii. Juno's old altar stands on your side of the valley: where your land lies all around it, offerings of bread win her over.",
+        goal: "Goal: take the castle of Veii.",
+        objective: Objective::DefeatRival(1),
+        cast: &[Stance::Alone],
+        hint: "Chapter III: geologists, mines and the weapons chain against a fortified city.",
+        far: false,
+        invader: None,
+        you: ("Camillus", Nation::Romans),
+        rivals: &[("Veii", Nation::Romans)],
+        map_size: 80,
+        medals: [60, 90, 120],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Veii),
+        gentle: false,
+        truce: None,
+    },
+    Mission {
+        key: "gauls",
+        title: "The Geese of the Capitol",
+        briefing: "The Gauls have beaten Rome's army at the Allia and are coming for the city: two war bands of the Senones, stronger than you and soon here. You cannot beat them in the field. Hold the hills until Camillus comes with an army.\n\nHere you learn defence: man the posts that face the north, set the military window so the border holds more soldiers than the inland, keep beer, swords and shields coming for new recruits, and use catapults. Juno's temple on the Capitol is yours: feed her sacred geese with grain, and they may wake the guards.",
+        goal: "Goal: hold out 45 minutes until Camillus comes.",
+        objective: Objective::Survive(45),
+        cast: &[Stance::Allied, Stance::Allied],
+        hint: "Chapter IV: defence. Hold the hills against a stronger invader.",
+        far: false,
+        invader: None,
+        you: ("Marcus Manlius", Nation::Romans),
+        rivals: &[("Brennus", Nation::Vikings), ("The Senones", Nation::Vikings)],
+        map_size: 64,
+        // (a stand of 45 minutes: whoever stands is in time)
+        medals: [45, 45, 45],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Gauls),
+        gentle: false,
+        truce: Some(10),
+    },
+    Mission {
+        key: "appian",
+        title: "The Appian Way",
+        briefing: "The Samnites hold the mountains, and once they trapped a Roman army in the pass of the Caudine Forks. Never again, says the censor Appius Claudius: Rome will build a road, paved and straight, to its allies in the south, so that the legions reach them in days, not weeks.\n\nHere you learn logistics: long roads, flags close together, donkeys on the busy roads (a donkey breeder), warehouses on the way, and the transport window's order. Reach the allied towns of Capua, Cumae and Neapolis: your land must touch theirs. The Samnites will try to cut your way. Janus's gates stand on the road: hold them, and the god of beginnings sends you helpers.",
+        goal: "Goal: reach the three allied towns: your land must touch theirs.",
+        objective: Objective::Reach(3),
+        cast: &[Stance::Friend, Stance::Friend, Stance::Friend, Stance::Alone],
+        hint: "Chapter V: long roads, donkeys and warehouses to reach three allied towns.",
+        far: false,
+        invader: None,
+        you: ("Appius Claudius", Nation::Romans),
+        rivals: &[
+            ("Capua", Nation::Romans),
+            ("Cumae", Nation::Romans),
+            ("Neapolis", Nation::Romans),
+            ("The Samnites", Nation::Romans),
+        ],
+        map_size: 96,
+        medals: [60, 90, 120],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Appian),
+        gentle: false,
+        truce: None,
+    },
+    Mission {
+        key: "pyrrhus",
+        title: "A Pyrrhic Victory",
+        briefing: "King Pyrrhus of Epirus has crossed to Italy to fight for the Greek cities of the south, with elephants and an army trained in every war since Alexander. His soldiers are few, but each is worth three of yours.\n\nHere you learn soldier quality: gold mines and a mint, coins for the military buildings so their soldiers are promoted, and attacks with your strongest soldiers. The Field of Mars lies near Rome: while six or more soldiers wait in your warehouses, they drill there, Mars's favour grows, and he promotes some of them.",
+        goal: "Goal: take the castle of Pyrrhus.",
+        objective: Objective::DefeatRival(1),
+        cast: &[Stance::Alone],
+        hint: "Chapter VI: soldier quality, gold and promotions against a master of war.",
+        far: false,
+        invader: None,
+        you: ("Curius", Nation::Romans),
+        rivals: &[("Pyrrhus", Nation::Romans)],
+        map_size: 80,
+        medals: [60, 90, 120],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Pyrrhus),
+        gentle: false,
+        truce: None,
+    },
+    Mission {
+        key: "mylae",
+        title: "Mylae",
+        briefing: "Carthage rules the sea, and its fleet has never lost. Rome has no ships at all. You, Gaius Duilius, will change that: build a harbour on a free coast, switch a shipyard to sea ships, and carry your soldiers across.\n\nHere you learn seafaring: harbour spots (the anchors), shipyards, expeditions that found a colony on another coast, and attacks from the sea. Neptune's shrine stands on a coast between you and Carthage: offer fish there, and he may send you sailors.",
+        goal: "Goal: take a Carthaginian military building across the sea.",
+        objective: Objective::Vanquish(1),
+        cast: &[Stance::Alone],
+        hint: "Chapter VII: harbours, ships and attacks across the sea.",
+        far: true,
+        invader: None,
+        you: ("Gaius Duilius", Nation::Romans),
+        rivals: &[("Carthage", Nation::Nubians)],
+        map_size: 96,
+        medals: [90, 120, 150],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Mylae),
+        gentle: false,
+        truce: None,
+    },
+    Mission {
+        key: "hannibal",
+        title: "Hannibal at the Gates",
+        briefing: "Hannibal has crossed the Alps with his army and his elephants and beaten every army Rome sent against him. You are Quintus Fabius Maximus, dictator: do not meet him in the open. Hold the strong places, let him come to you, and let Italy itself wear him down.\n\nHold out fifty minutes, until Scipio is ready to sail for Africa. Cybele's temple stands near Rome: the Sibylline books say the invader leaves Italy only when the Great Mother comes to Rome. Hold it, and Rome's people rally to you.",
+        goal: "Goal: hold out 50 minutes, until Scipio sails for Africa.",
+        objective: Objective::Survive(50),
+        cast: &[Stance::Alone],
+        hint: "Chapter VIII: hold out against Hannibal, and let time fight for you.",
+        far: false,
+        invader: None,
+        you: ("Fabius", Nation::Romans),
+        rivals: &[("Hannibal", Nation::Nubians)],
+        map_size: 96,
+        medals: [50, 50, 50],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Hannibal),
+        gentle: false,
+        truce: Some(15),
+    },
+    Mission {
+        key: "carthage",
+        title: "Carthago delenda est",
+        briefing: "Fifty years after Zama, Carthage is rich again, and in the senate old Cato ends every speech with the same words: Carthage must be destroyed. The senate sends you, Scipio Aemilianus. King Massinissa of Numidia fights on your side.\n\nThis chapter asks for everything at once: an economy that feeds an army, soldiers of high rank, and a long siege. The Field of Mars near Rome drills your waiting soldiers. Carthage's temple stands near its walls: where your land closes around it, its god no longer guards the city.",
+        goal: "Goal: take the castle of Carthage.",
+        objective: Objective::DefeatRival(1),
+        cast: &[Stance::Alone, Stance::Friend],
+        hint: "Chapter IX: everything you have learned, in a long war on land.",
+        far: false,
+        invader: None,
+        you: ("Scipio Aemilianus", Nation::Romans),
+        rivals: &[("Carthage", Nation::Nubians), ("Numidia", Nation::Nubians)],
+        map_size: 112,
+        medals: [90, 120, 150],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Carthage),
+        gentle: false,
+        truce: None,
+    },
+    Mission {
+        key: "janus",
+        title: "The Gates of Janus",
+        briefing: "After a century of civil wars two men are left: you, Octavian, in Rome, and Mark Antony, Cleopatra's ally, his legions gathered in the north and his fleet in Greece. The Cantabri in Spain have never been tamed, and beyond the Rhine and the Channel the Germans and the Britons watch.\n\nEverything you have learned, on the whole Mediterranean. When Antony falls, the doors of the temple of Janus can close: Rome at peace everywhere, for the first time in two hundred years. Janus's gates stand near Rome: hold them, and veterans of every war come to serve you.",
+        goal: "Goal: take Mark Antony's castle. Then the gates of Janus close.",
+        objective: Objective::DefeatRival(4),
+        cast: &[Stance::Alone, Stance::Peaceful, Stance::Peaceful, Stance::Alone, Stance::Peaceful],
+        hint: "Chapter X: the whole Mediterranean, and at the end, peace.",
+        far: false,
+        invader: None,
+        you: ("Octavian", Nation::Romans),
+        rivals: &[
+            ("The Cantabri", Nation::Vikings),
+            ("The Britons", Nation::Vikings),
+            ("The Suebi", Nation::Vikings),
+            ("Mark Antony", Nation::Romans),
+            ("The Dacians", Nation::Vikings),
+        ],
+        map_size: 0,
+        medals: [120, 150, 180],
+        land_cap: 0,
+        rome: Some(rr_mapgen::rome::RomeMap::Janus),
+        gentle: false,
+        truce: None,
+    },
+];

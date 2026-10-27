@@ -151,3 +151,62 @@ fn a_holy_place_between_two_realms_is_contested() {
     sim.step(&[]);
     assert_eq!(sim.world().holy_holder(mid), rr_world::Holder::Contested);
 }
+
+/// A story's hand-over (`Cmd::HandOver`, the Roman campaign's Tarpeia): the owner's military
+/// building goes over to the other player with its land, its soldiers walk home; nobody else
+/// can give it away, and a warehouse can't be given.
+#[test]
+fn a_building_is_handed_over() {
+    let mut sim = sim_with(&[c(20, 20), c(40, 20)]);
+    let at = c(26, 20);
+    sim.step(&[PlayerCommand { player: 0, cmd: Cmd::PlaceBuilding { at, kind: B::Guardhouse } }]);
+    let a = walk(&sim, c(20, 20), SE, 1);
+    sim.step(&[PlayerCommand { player: 0, cmd: Cmd::BuildRoad { from: a, dirs: vec![E, E, E, E, E, E] } }]);
+    let b = sim.building_at(at).unwrap();
+    run_until(&mut sim, 20_000, |s| s.building(b).is_ready() && !s.building(b).soldiers.is_empty()).unwrap();
+    let give = |to| PlayerCommand { player: 0, cmd: Cmd::HandOver { at, to } };
+    // only the owner may give it, and not a castle
+    sim.step(&[PlayerCommand { player: 1, cmd: Cmd::HandOver { at, to: 1 } }]);
+    assert_eq!(sim.building(b).player, 0);
+    sim.step(&[PlayerCommand { player: 0, cmd: Cmd::HandOver { at: c(20, 20), to: 1 } }]);
+    assert_eq!(sim.building(sim.building_at(c(20, 20)).unwrap()).player, 0);
+    let soldiers_before = sim.player_inventory(0).soldiers();
+    sim.step(&[give(1)]);
+    assert_eq!(sim.building(b).player, 1, "handed over");
+    assert!(sim.building(b).soldiers.is_empty(), "its soldiers left");
+    run_until(&mut sim, 4000, |s| s.player_inventory(0).soldiers() > soldiers_before).expect("the soldier came home");
+    for _ in 0..60 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.world().owner(at), Some(1), "the land goes with it");
+}
+
+/// Offerings at a holy place (the Roman campaign's gods, `Cmd::Offer`) leave the warehouses,
+/// only while the player holds the place and has the wares; a god's answer (`Cmd::Bless`)
+/// promotes privates in the warehouses.
+#[test]
+fn offerings_and_a_gods_answer() {
+    use rr_rules::{Job, Ware};
+    let mut sim = sim1();
+    let altar = walk(&sim, c(20, 20), E, 5);
+    let far = walk(&sim, c(20, 20), W, 15);
+    for p in [altar, far] {
+        sim.debug_set_obj(p, rr_world::NodeObj::Decoration(rr_world::HOLY_BASE + 2));
+    }
+    sim.step(&[]);
+    let boards = sim.player_inventory(0).ware(Ware::Boards);
+    let offer = |at, n| PlayerCommand { player: 0, cmd: Cmd::Offer { at, ware: Ware::Boards, n } };
+    sim.step(&[offer(altar, 3)]);
+    assert_eq!(sim.player_inventory(0).ware(Ware::Boards), boards - 3);
+    sim.step(&[offer(far, 3), offer(altar, boards + 1)]);
+    assert_eq!(sim.player_inventory(0).ware(Ware::Boards), boards - 3, "not held, or too many: nothing");
+    let (pvt, pfc) = (sim.player_inventory(0).job(Job::Private), sim.player_inventory(0).job(Job::PrivateFirstClass));
+    sim.step(&[PlayerCommand { player: 0, cmd: Cmd::Bless { at: altar, n: 3, recruit: false } }]);
+    assert_eq!(sim.player_inventory(0).job(Job::Private), pvt - 3);
+    assert_eq!(sim.player_inventory(0).job(Job::PrivateFirstClass), pfc + 3);
+    sim.step(&[PlayerCommand { player: 0, cmd: Cmd::Bless { at: far, n: 3, recruit: false } }]);
+    assert_eq!(sim.player_inventory(0).job(Job::PrivateFirstClass), pfc + 3, "not from a place not held");
+    // the recruiting answer: new privates in the castle
+    sim.step(&[PlayerCommand { player: 0, cmd: Cmd::Bless { at: altar, n: 5, recruit: true } }]);
+    assert_eq!(sim.player_inventory(0).job(Job::Private), pvt - 3 + 5);
+}

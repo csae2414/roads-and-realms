@@ -11,6 +11,7 @@ rr-core.workspace = true
 rr-mapgen.workspace = true
 rr-rules.workspace = true
 rr-sim.workspace = true
+rr-world.workspace = true
 
 [lints]
 workspace = true

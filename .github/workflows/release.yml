@@ -1,0 +1,79 @@
+# Releases for Linux and Windows (x86_64): push a tag like v0.1.0 and the game is built on
+# both, packed with its assets, and attached to a GitHub release of that tag.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # (22.04: an older glibc, so the binary runs on more Linux systems)
+          - os: ubuntu-22.04
+            name: linux-x86_64
+          - os: windows-latest
+            name: windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: System libraries (sound, windowing)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libxkbcommon-dev libgl1-mesa-dev libwayland-dev \
+            libx11-dev libxcursor-dev libxrandr-dev libxi-dev
+      - name: Build
+        run: cargo build --release -p rr-app -p rr-cli
+      # (on Linux: some tests spell paths the Linux way; the Windows build must still compile)
+      - name: Test
+        if: runner.os == 'Linux'
+        run: cargo test --release --workspace
+      - name: Pack (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          v="${GITHUB_REF_NAME}"
+          d="roads-and-realms-$v"
+          mkdir -p "$d"
+          cp target/release/rr-app target/release/rr-cli "$d/"
+          cp -r assets "$d/assets"
+          cp LICENSE README.md tools/install-launcher.sh "$d/"
+          tar -czf "$d-${{ matrix.name }}.tar.gz" "$d"
+      - name: Pack (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $v = "$env:GITHUB_REF_NAME"
+          $d = "roads-and-realms-$v"
+          New-Item -ItemType Directory -Path $d | Out-Null
+          Copy-Item target/release/rr-app.exe, target/release/rr-cli.exe, LICENSE, README.md -Destination $d
+          Copy-Item -Recurse assets "$d/assets"
+          Compress-Archive -Path $d -DestinationPath "$d-${{ matrix.name }}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: roads-and-realms-*.*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" roads-and-realms-* --repo "$GITHUB_REPOSITORY" \
+            --title "Roads & Realms $GITHUB_REF_NAME" --generate-notes

@@ -19,10 +19,11 @@ pub fn cast_line(m: &Mission, level: rr_ai::Level) -> String {
 
 /// How the menu's hover and the briefing head each group of a cast (new-player round 12, #9:
 /// "at war with you" in one, "allied against you" in the other).
-pub const CAST_HEADS: [(Stance, &str); 3] = [
+pub const CAST_HEADS: [(Stance, &str); 4] = [
     (Stance::Allied, "Allied against you:"),
     (Stance::Alone, "Each on their own, at war with all:"),
     (Stance::Peaceful, "At peace with you:"),
+    (Stance::Friend, "Allied with you:"),
 ];
 
 /// A mission that comes with a map file, kept next to it as `NAME.mission.json`: a title, the
@@ -52,6 +53,8 @@ fn objective_json(o: Objective) -> serde_json::Value {
         Objective::Survive(n) => json!({ "survive": n }),
         Objective::Make(_, n) => json!({ "mint_coins": n }),
         Objective::HoldMapLand(n) => json!({ "hold_map_land": n }),
+        Objective::Vanquish(n) => json!({ "vanquish": n }),
+        Objective::Reach(n) => json!({ "reach": n }),
     }
 }
 
@@ -69,6 +72,8 @@ fn objective_from(v: &serde_json::Value) -> Result<Objective, String> {
         "defeat_rival" => Ok(Objective::DefeatRival(n.min(7) as u8)),
         "hold_land" => Ok(Objective::HoldLand(n.min(100))),
         "hold_map_land" => Ok(Objective::HoldMapLand(n.min(100))),
+        "vanquish" => Ok(Objective::Vanquish(n)),
+        "reach" => Ok(Objective::Reach(n)),
         // (a day at most: 3 579 140 minutes overflowed the frame count; QA round 8, #4)
         "survive" => Ok(Objective::Survive(n.min(24 * 60))),
         "mint_coins" => Ok(Objective::Make(rr_rules::Ware::Coins, n)),
@@ -292,7 +297,10 @@ mod objective_tests {
         assert_eq!(ROME.len(), ROME_MISSIONS.len());
         for (k, m) in ROME.iter().zip(ROME_MISSIONS.iter()) {
             assert_eq!(*k, m.key);
-            assert!(m.gentle == (m.key == "augury"), "{k}: only the gentle chapters keep the peace at every level");
+            assert!(
+                m.gentle == ["augury", "sabines"].contains(&m.key),
+                "{k}: the ★ chapters keep the peace at every level"
+            );
             for t in [m.title, m.briefing, m.goal, m.hint, m.you.0] {
                 assert!(crate::i18n::has_german(t), "{k}: {t}");
             }
@@ -323,6 +331,48 @@ mod objective_tests {
         assert_eq!((map.players(), map.grid.width), (2, 56));
         let sim = crate::new_game(&args);
         assert!(!progress(m.objective, &sim, 0).met, "met at the start");
+    }
+
+    /// Every Roman chapter's holy places stand on its map, on every seed: as many as its layout
+    /// has, each its own god, its ring walkable.
+    #[test]
+    fn every_chapter_has_its_holy_places() {
+        for m in ROME_MISSIONS.iter() {
+            let layout = m.rome.expect("a Roman chapter has its layout");
+            for seed in 1..=3 {
+                let map = crate::load_map(&crate::Args { mission: Some(m.key.into()), seed, ..Default::default() });
+                let w = rr_world::World::new(&map);
+                let mut gods: Vec<u8> = w.holy_places().iter().map(|h| h.1).collect();
+                let mut want: Vec<u8> = layout.holy().iter().map(|h| h.1).collect();
+                gods.sort();
+                want.sort();
+                assert_eq!(gods, want, "{} seed {seed}", m.key);
+                for (at, _) in w.holy_places() {
+                    assert!(
+                        map.grid.within(at, rr_world::HOLY_RING).all(|q| w.node_walkable(q)),
+                        "{} seed {seed}",
+                        m.key
+                    );
+                }
+            }
+        }
+    }
+
+    /// Chapter III (docs/CAMPAIGN-ROME.md): on every seed Juno's altar stands on the player's
+    /// side of the way to Veii, on land, away from both castles.
+    #[test]
+    fn junos_altar_stands_on_the_way_to_veii() {
+        for seed in 1..=6 {
+            let args = crate::Args { mission: Some("veii".into()), seed, ..Default::default() };
+            let map = crate::load_map(&args);
+            let w = rr_world::World::new(&map);
+            let holy = w.holy_places();
+            assert_eq!(holy.iter().map(|h| h.1).collect::<Vec<_>>(), vec![2], "seed {seed}");
+            let (g, at) = (map.grid, holy[0].0);
+            let (me, veii) = (map.hq[0].unwrap(), map.hq[1].unwrap());
+            assert!(g.distance(me, at) > 6 && g.distance(me, at) < g.distance(veii, at), "seed {seed}");
+            assert!(g.within(at, rr_world::HOLY_RING).all(|q| w.node_walkable(q)), "seed {seed}");
+        }
     }
 
     /// Game design round 1, #4: a win leads on to the next mission, the last to none.
@@ -438,7 +488,9 @@ mod soak_tests {
                 .iter()
                 .map(|&(key, seed)| {
                     sc.spawn(move || {
-                        let args = crate::Args { mission: Some(key.into()), seed, ai_level: 0, ..Default::default() };
+                        // (RR_GOALS_LEVEL=1: the rivals at normal, not easy)
+                        let ai_level = std::env::var("RR_GOALS_LEVEL").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+                        let args = crate::Args { mission: Some(key.into()), seed, ai_level, ..Default::default() };
                         let mut sim = crate::new_game(&args);
                         let mut ais = crate::app::make_ais_for_test(&args, sim.players().len());
                         ais.push(rr_ai::Ai::with_level(0, rr_ai::Level::Hard));
@@ -450,9 +502,13 @@ mod soak_tests {
                         let truce = crate::app::truce_end(&ais, 0).unwrap_or(0);
                         // (and leaves a rival at peace for good alone where the goal isn't to fight
                         // it: it took Remus's castle)
-                        let peace = m.cast_at(rr_ai::Level::Easy).iter().all(|s| *s == Stance::Peaceful)
-                            && !matches!(m.objective, Objective::DefeatRival(_) | Objective::DefeatAll);
+                        let peace = m.cast_at(crate::level(ai_level)).iter().all(|s| !s.hostile())
+                            && !matches!(
+                                m.objective,
+                                Objective::DefeatRival(_) | Objective::DefeatAll | Objective::Vanquish(_)
+                            );
                         let mut met = None;
+                        let mut deeds = 0u32;
                         while sim.gf().0 < 180 * 1200 && met.is_none() {
                             let mut cmds = Vec::new();
                             for ai in ais.iter_mut() {
@@ -464,6 +520,25 @@ mod soak_tests {
                                     || (sim.gf().0 >= truce && !peace)
                                     || !matches!(c.cmd, rr_sim::Cmd::Attack { .. })
                             });
+                            // the story's deeds as the app does them (Tarpeia: a post handed over, war)
+                            if let Some(tale) = rr_game::story::tale(key).filter(|_| sim.gf().0 % 100 == 0) {
+                                let seen = rr_game::story::Seen { minute: sim.gf().0 / 1200, ..Default::default() };
+                                for (bit, deed) in rr_game::story::due_deeds(tale, &seen, deeds) {
+                                    deeds |= bit;
+                                    match deed {
+                                        rr_game::story::Deed::HandOver { to, .. } => {
+                                            if let Some(at) = rr_game::story::hand_over_spot(&sim, 0, to) {
+                                                let cmd = rr_sim::Cmd::HandOver { at, to };
+                                                cmds.push(rr_sim::PlayerCommand { player: 0, cmd });
+                                            }
+                                        }
+                                        rr_game::story::Deed::Bless { .. } => {}
+                                        rr_game::story::Deed::War { with } => {
+                                            ais.iter_mut().filter(|a| a.player == with).for_each(|a| a.truce = None);
+                                        }
+                                    }
+                                }
+                            }
                             sim.step(&cmds);
                             if sim.gf().0 % 1200 == 0 && progress(m.objective, &sim, 0).met {
                                 met = Some(sim.gf().0 / 1200);
@@ -475,9 +550,10 @@ mod soak_tests {
                             let inv = sim.player_inventory(0);
                             let out: usize = sim.buildings().iter().filter(|(_, b)| b.player == 0).map(|(_, b)| b.soldiers.len()).sum();
                             eprintln!(
-                                "{key} {seed}: gf {} shares {} {} posts {} {} soldiers home {} out {} boards {} stones {}",
+                                "{key} {seed}: gf {} shares {} {} posts {} {} soldiers home {} out {} boards {} stones {} vanquished {}",
                                 sim.gf().0, share(0), share(1), posts(0), posts(1), inv.soldiers(), out,
-                                inv.ware(rr_rules::Ware::Boards), inv.ware(rr_rules::Ware::Stones)
+                                inv.ware(rr_rules::Ware::Boards), inv.ware(rr_rules::Ware::Stones),
+                                sim.players()[0].stats.vanquished
                             );
                         }
                         (key, seed, met)

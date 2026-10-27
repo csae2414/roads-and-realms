@@ -2,6 +2,9 @@
 //!
 //! `rr-app [--map FILE] [--seed N] [--players N] [--size N] [--screenshot OUT.png --gf N]`
 
+// (on Windows a window of its own, without a console beside it)
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod animals;
 mod app;
 mod editor;

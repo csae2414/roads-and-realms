@@ -6,7 +6,7 @@
 pub mod missions;
 pub mod story;
 
-use missions::{Mission, Stance};
+use missions::Mission;
 use rr_ai::Level;
 use rr_rules::Ware;
 
@@ -98,13 +98,20 @@ impl Truce {
 pub fn mission_map(m: &Mission, seed: u64) -> rr_core::MapData {
     let mut map = mission_land(m, seed);
     // the seven hills' holy place: Jupiter's augurs on the Capitol
-    if m.seven_hills {
-        rr_mapgen::rome::holy_places(&mut map);
+    if let Some(layout) = m.rome {
+        rr_mapgen::rome::holy_places(&mut map, layout);
     }
     map
 }
 
 fn mission_land(m: &Mission, seed: u64) -> rr_core::MapData {
+    use rr_mapgen::rome::RomeMap;
+    // the last chapter: Europe, Rome in Italy (the Europe mission's region; in the
+    // Mediterranean's, Rome's slot was boxed in and its realm stayed at 2-4 % in 6 of 8 games)
+    if m.rome == Some(RomeMap::Janus) {
+        return rr_mapgen::region::generate(rr_mapgen::world::region("europe").expect("region"), seed);
+    }
+    let (islands, mountains) = m.rome.map_or((false, 14), |l| l.land());
     match rr_mapgen::world::region(m.key).filter(|_| m.map_size == 0) {
         Some(r) => rr_mapgen::region::generate(r, seed),
         None => rr_mapgen::generate(&rr_mapgen::GenParams {
@@ -112,7 +119,11 @@ fn mission_land(m: &Mission, seed: u64) -> rr_core::MapData {
             height: m.map_size,
             players: m.rivals.len() + 1,
             seed,
-            seven_hills: m.seven_hills,
+            // (the seven hills, or the random map: more mountains for Veii's ore and the Alps,
+            // islands for the sea chapters)
+            rome: m.rome.filter(|l| l.hills()),
+            mountains,
+            islands,
             ..Default::default()
         }),
     }
@@ -131,8 +142,12 @@ pub fn mission_players(m: &Mission, level: Level) -> Vec<(&'static str, rr_sim::
 /// after it), a peaceful rival keeps it for good. None for the human's own slot.
 pub fn mission_truce(m: &Mission, level: Level, p: u8) -> Option<Truce> {
     let i = (p as usize).checked_sub(1)?;
-    let peaceful = m.cast_at(level).get(i) == Some(&Stance::Peaceful);
-    let hostile = if level == Level::Easy { 2 * rr_ai::MISSION_TRUCE } else { rr_ai::MISSION_TRUCE };
+    let peaceful = m.cast_at(level).get(i).is_some_and(|s| !s.hostile());
+    let hostile = match m.truce {
+        Some(t) => crate::minutes(t) * if level == Level::Easy { 3 } else { 2 } / 2,
+        None if level == Level::Easy => 2 * rr_ai::MISSION_TRUCE,
+        None => rr_ai::MISSION_TRUCE,
+    };
     Some(if peaceful { Truce::ForGood } else { Truce::Until(hostile) })
 }
 

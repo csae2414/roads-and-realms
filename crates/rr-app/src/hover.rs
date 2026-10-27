@@ -7,13 +7,14 @@ use rr_core::MapCoord;
 use rr_rules::BuildingType as B;
 use rr_world::{Bq, NodeObj};
 
-/// The lines for `p` as `player` sees it (empty where they have seen nothing).
-pub fn lines(sim: &rr_sim::Sim, player: u8, p: MapCoord) -> Vec<String> {
+/// The lines for `p` as `player` sees it (empty where they have seen nothing); `favour`: the
+/// chapter's god's favour with the player (Concordia's).
+pub fn lines(sim: &rr_sim::Sim, player: u8, p: MapCoord, favour: u32) -> Vec<String> {
     if sim.visibility(player, p) == rr_sim::Visibility::Unexplored {
         return Vec::new();
     }
     if let Some(god) = rr_world::holy_god(sim.world().obj(p)) {
-        return holy_lines(sim, player, p, god);
+        return holy_lines(sim, player, p, god, favour);
     }
     let mut out = Vec::new();
     if let Some(what) = what_stands(sim, player, p) {
@@ -28,14 +29,44 @@ pub fn lines(sim: &rr_sim::Sim, player: u8, p: MapCoord) -> Vec<String> {
 }
 
 /// A holy place: what it is, and who may use it (the land fully around it decides).
-fn holy_lines(sim: &rr_sim::Sim, player: u8, p: MapCoord, god: u8) -> Vec<String> {
+fn holy_lines(sim: &rr_sim::Sim, player: u8, p: MapCoord, god: u8, favour: u32) -> Vec<String> {
+    // Concordia's rule is her own: both lands near her shrine, her favour growing meanwhile
+    if god == 1 {
+        let state = if rr_game::story::concordia_near(sim, player) {
+            "Your land and your rival's meet here: the women carry gifts across."
+        } else {
+            "Bring your land up to her shrine, beside your rival's, and the women carry gifts across."
+        };
+        return vec![
+            tr("Concordia's shrine, a holy place").to_string(),
+            show(&msg(
+                "Concordia's favour: {1} of 100. At 50, one battle fewer brings the peace.",
+                &[&favour.to_string()],
+            )),
+            tr(state).to_string(),
+        ];
+    }
     let name = tr(match god {
         0 => "Jupiter's augur platform, a holy place",
+        2 => "Juno's altar, a holy place",
+        3 => "Juno's temple and her sacred geese, a holy place",
+        4 => "The gates of Janus, a holy place",
+        5 => "The Field of Mars, a holy place",
+        6 => "Neptune's shrine, a holy place",
+        7 => "Cybele's temple, a holy place",
+        8 => "Carthage's temple, a holy place",
         _ => "A holy place",
     });
     let state = match sim.world().holy_holder(p) {
         rr_world::Holder::Player(o) if o == player => tr(match god {
             0 => "Yours: Jupiter's birds show you the land far around the hill.",
+            2 => "Yours: click it to offer bread, and Juno may leave Veii for Rome.",
+            3 => "Yours: click it to feed the sacred geese grain. Well fed, they may wake the guards.",
+            4 => "Yours: Janus, the god of gates and roads, watches over your way.",
+            5 => "Yours: while six or more soldiers wait in your warehouses, they drill here, and Mars's favour grows.",
+            6 => "Yours: click it to offer fish, and Neptune may send you sailors.",
+            7 => "Yours: the Great Mother watches over Rome.",
+            8 => "Yours: Carthage's own god no longer guards its walls.",
             _ => "Yours: its god is with you.",
         })
         .to_string(),
@@ -46,7 +77,12 @@ fn holy_lines(sim: &rr_sim::Sim, player: u8, p: MapCoord, god: u8) -> Vec<String
         rr_world::Holder::Contested => tr("Contested: a border runs through its ring, so nobody may use it.").into(),
         rr_world::Holder::Nobody => tr("Nobody's: close your border all around it to win its god.").into(),
     };
-    vec![name.to_string(), state]
+    let mut out = vec![name.to_string(), state];
+    // (Mars takes no offerings: his favour shows here)
+    if god == 5 {
+        out.push(show(&msg("Favour: {1} of 100", &[&favour.to_string()])));
+    }
+    out
 }
 
 /// The building, flag or thing on the point.
@@ -187,19 +223,19 @@ mod tests {
     fn the_hover_tells_what_is_here() {
         let mut s = sim();
         s.step(&[]);
-        let hq = lines(&s, 0, MapCoord::new(20, 20));
+        let hq = lines(&s, 0, MapCoord::new(20, 20), 0);
         assert_eq!(hq[0], "Castle", "{hq:?}");
         // a free spot of our own, away from the castle: room to build
-        let free = lines(&s, 0, MapCoord::new(24, 24));
+        let free = lines(&s, 0, MapCoord::new(24, 24), 0);
         assert!(free.last().unwrap().starts_with("Room for"), "{free:?}");
         // right by the castle: no military building
-        let near = lines(&s, 0, MapCoord::new(23, 20));
+        let near = lines(&s, 0, MapCoord::new(23, 20), 0);
         assert!(
             near.last().unwrap().contains("No military building") || near.last().unwrap().starts_with("Only"),
             "{near:?}"
         );
         // outside our land
-        let out = lines(&s, 0, MapCoord::new(20, 32));
+        let out = lines(&s, 0, MapCoord::new(20, 32), 0);
         assert!(out.is_empty() || out.last().unwrap().starts_with("No one's land"), "{out:?}");
         // a road
         let from = s.world().grid().neighbor(MapCoord::new(20, 20), rr_core::Direction::SE);
@@ -207,20 +243,20 @@ mod tests {
         s.step(&[rr_sim::PlayerCommand { player: 0, cmd: road }]);
         let mid =
             s.world().grid().neighbor(s.world().grid().neighbor(from, rr_core::Direction::E), rr_core::Direction::E);
-        assert!(lines(&s, 0, mid)[0].starts_with("A road"), "{:?}", lines(&s, 0, mid));
+        assert!(lines(&s, 0, mid, 0)[0].starts_with("A road"), "{:?}", lines(&s, 0, mid, 0));
         // a holy place: nobody's until a border closes round it
         let holy = MapCoord::new(30, 20);
         s.debug_set_obj(holy, NodeObj::Decoration(rr_world::HOLY_BASE));
-        let h = lines(&s, 0, holy);
+        let h = lines(&s, 0, holy, 0);
         assert!(h[0].starts_with("Jupiter's") && h.len() == 2, "{h:?}");
         assert!(h[1].starts_with("Nobody's") || h[1].starts_with("Yours"), "{h:?}");
         // a geologist's sign: coal, a lot, and the mine for it
         let at = MapCoord::new(24, 22);
         s.debug_set_obj(at, NodeObj::Sign(0x16));
-        let sign = lines(&s, 0, at);
+        let sign = lines(&s, 0, at, 0);
         assert!(sign.contains(&"A geologist's sign: coal, a lot.".to_string()), "{sign:?}");
         assert!(sign.iter().any(|l| l == "The mine for it: Coal mine."), "{sign:?}");
         s.debug_set_obj(at, NodeObj::Sign(0x00));
-        assert!(lines(&s, 0, at).iter().any(|l| l.contains("nothing found")));
+        assert!(lines(&s, 0, at, 0).iter().any(|l| l.contains("nothing found")));
     }
 }

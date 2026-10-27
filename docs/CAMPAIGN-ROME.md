@@ -104,9 +104,9 @@ helping.
 | God | Chapters | Verb | Holy place | How it works | What it gives (small) |
 |---|---|---|---|---|---|
 | **Jupiter** | 1 | *watch* | The highest of the seven hills | No offerings. Whoever holds the hill sees from it: the augur reads the birds there | Far sight from the hill, and the first omens |
-| **Concordia** | 2 | *unite* | A shrine on the border with the Sabines | Gifts of bread and beer carried across the border bring the peace closer | Peace comes earlier, and the Sabines join with soldiers |
-| **Juno of Veii** | 3 | *lure* | Her altar on your side of the valley, facing Veii | Offerings of bread call her out of the enemy's city | Veii's soldiers are promoted more slowly |
-| **Juno's geese** | 4 | *guard* | The Capitol, your last hill | The sacred geese eat grain. The flock walks your border, and a goose can see | Attacks are announced earlier, with their direction |
+| **Concordia** | 2 | *unite* | A shrine in the valley between the two realms | Where both lands reach her shrine, the women carry gifts across: her favour grows | At 50 favour, one battle fewer brings the peace |
+| **Juno of Veii** | 3 | *lure* | Her altar on your side of the valley, facing Veii | Offerings of bread call her out of the enemy's city | At 50 and 80 favour, three of your waiting soldiers each rise a rank |
+| **Juno's geese** | 4 | *guard* | Juno's temple on the Capitol, inside your first land | Feed the sacred geese grain (an offering, as at Veii) | At 50 favour the geese wake Manlius: five new privates join the defence |
 | **Janus** | 5, 10 | *switch* | His gates in your city | You open or close the gates. Open means war: soldiers are recruited faster. Closed means peace: workshops work faster, but you can't attack. Switching takes a few minutes | A choice to make, not a bonus |
 | **Mars** | 6, 9 | *drill* | The Field of Mars by the river | Soldiers from your warehouses drill on his field. Every finished drill raises favour | Drilled soldiers are promoted without coins |
 | **Neptune** | 7 | *offer* | A shrine on a cape across the strait (Carthage's coast) | Fish at the altar | Faster ships, and once a storm that keeps Carthage's fleet in port |
@@ -254,7 +254,7 @@ without claiming more. Where they are history, we don't change who won, who died
 | 3 | Marcus Furius Camillus | The king of Veii (unnamed in the sources) | A Picus of the fourth century, who suggests the *evocatio* |
 | 4 | Marcus Manlius on the Capitol, then Camillus | Brennus, the Gauls' leader ("Vae victis") | A Picus who keeps Juno's geese |
 | 5 | Appius Claudius Caecus, the censor | Samnite leaders (Gaius Pontius of the Caudine Forks) | A Picus who reads the road's omens |
-| 6 | The consul Publius Valerius Laevinus | Pyrrhus of Epirus; Cineas, his envoy | A Picus on the Field of Mars |
+| 6 | Manius Curius Dentatus (who beat Pyrrhus at Beneventum, 275 BC; Laevinus had lost at Heraclea) | Pyrrhus of Epirus; Cineas, his envoy | A Picus on the Field of Mars |
 | 7 | Gaius Duilius | Hannibal Gisco, the Carthaginian admiral | A Picus at sea for the first time |
 | 8 | Quintus Fabius Maximus, then Publius Cornelius Scipio | Hannibal Barca | The Picus who reads the Sibylline books |
 | 9 | Scipio Aemilianus | Cato in the senate; Hasdrubal, the city's last general | A Picus who doubts |
@@ -342,10 +342,28 @@ valley between them, with **Concordia's shrine** at its edge. In a corner, the s
 - *Titus Tatius*, the Sabine king, in a few short messages: a proud man, not a villain.
 - *Tarpeia*, in one scene only.
 
-**How it plays: four beats**
+**As built (2026-10-27).** Simpler than the plan below, by the keep-it-simple rules:
+
+- *Map:* the seven hills at 64 nodes; Romulus on the Palatine, the Sabines on their own hill far
+  north of the Quirinal (28 nodes apart), Concordia's shrine in the valley halfway (14 from
+  each castle, so both realms must push out to meet there).
+- *Concordia:* no deliveries yet (they come with the offerings of chapter III). Her favour grows
+  one point every 10 seconds while your land and the Sabines' both lie within 3 nodes of her
+  shrine, and fades one a minute otherwise (`story::concordia_near`, `favour_step`; kept in the
+  save). At 50 the goal needs one building fewer.
+- *Caenina:* only in the briefing's spirit; a third realm would have muddled the goal's count.
+- *Tarpeia (minute 20):* your military building nearest the Sabine castle goes over to them
+  (`Cmd::HandOver`: its soldiers walk home, it keeps its land, the Sabines man it), told only
+  when it happens; the Sabines' truce ends either way (`story::Deed`).
+- *Goal:* take or burn two Sabine military buildings (`Objective::Vanquish`). When it is met,
+  the women step in, the Sabines keep the peace for good, and the chapter is won.
+- *Tested:* the goals soak wins 8 of 8 games (9-42 minutes), the story's deeds played by the
+  harness as by the app.
+
+**How it plays: four beats** *(the plan)*
 
 1. **The quiet weeks (from the start).** The briefing tells the festival in one sentence, in the
-   past: *"At the feast of Consus your men took the Sabines' daughters as wives. Their fathers
+   past: *"At the feast of Consus your men seized the Sabines' daughters and made them their wives. Their fathers
    have not forgiven it."* Nothing of it is shown. You build the soldier chain. Hersilia asks for
    a road to Concordia's shrine: *"Our families are across the valley. Let us at least send them
    bread."* Food or beer delivered there raises Concordia's favour.
@@ -379,6 +397,20 @@ the Romans themselves told it. Tarpeia is shown briefly and without gore, with b
 
 ### 3 · Veii ★★
 
+**As built (2026-10-27).**
+
+- *Map:* the random map at 80 nodes with more mountains (ore), Veii across it; Juno's altar 40 %
+  of the way from your castle to Veii's (else 30 or 50 %), on buildable land with its ring
+  clear (`rome::holy_places` for `RomeMap::Veii`).
+- *Offerings:* click the altar (held: your land all round it) and offer 5 bread from your
+  warehouses (`Cmd::Offer`); each bread is 4 favour, fading one a minute. No carriers walk to the
+  altar: robust, and bread is still the miners' food, so the choice is real.
+- *Juno's answer:* a story deed at favour 50 and again at 80 (`Deed::Bless`, `Cmd::Bless`): three
+  privates in your warehouses become privates first class, told by Picus. In place of "Veii's
+  soldiers are promoted more slowly", which would have needed lasting state in the simulation.
+- *Goal:* take Veii's castle. The goals soak wins 6 of 6 games in 61-69 minutes (medals 60, 90,
+  120).
+
 **History.** Veii, the rich Etruscan city, withstands a Roman siege for ten years. Camillus
 digs a tunnel under its walls into the temple of Juno, and asks the goddess to leave Veii for a
 new home in Rome (*evocatio*). Veii falls in 396 BC.
@@ -395,6 +427,22 @@ favour, Veii's soldiers are promoted more slowly. That is a small edge, felt onl
 siege. (The tunnel of the story is told in the briefing, not played.)
 
 ### 4 · The Geese of the Capitol ★★
+
+**As built (2026-10-27).**
+
+- *Map:* the seven hills, Rome on the Palatine, two allied Gaulish realms (Brennus and the
+  Senones, drawn as the northern people) on hills far to the north; Juno's temple with the geese
+  on the Capitol's slope, 6 nodes from the castle, Rome's from the start (`RomeMap::Gauls`).
+- *Goal:* hold out 45 minutes. The Gauls' truce is 10 minutes (15 on easy; `Mission::truce`):
+  with the usual 30 there would have been almost no war.
+- *The geese:* the game already warns of every attack the moment it is sent, with its numbers;
+  earlier would not be honest. So the geese do what the legend says they did: fed with grain
+  (offerings in the temple's window), at favour 50 they wake Manlius, and five new privates join
+  the castle (`Deed::Bless` with `recruit`).
+- *Medal:* a stand of 45 minutes is won in time or not at all, so every win is gold for now; a
+  medal by buildings lost needs a counter of its own.
+- *Tested:* the goals soak holds out in 6 of 6 games; seen live: the briefing's 10-minute truce,
+  the temple's window with the grain offering.
 
 **History.** In 390 BC the Gauls of Brennus rout the Romans at the Allia and sack Rome. Only the
 Capitol holds. One night the Gauls climb the rock; the sacred geese of Juno cackle, Marcus
@@ -557,6 +605,37 @@ massacre. Rivals still standing make peace in the closing message.
 
 **God: Janus**, who opens and closes, the same gates as in chapter 5: open for faster recruits,
 closed for faster workshops. At the end you close them for good.
+
+## Chapters V-X as built (2026-10-27)
+
+All ten chapters are playable. V-X use the same few building blocks, simpler than the plans
+above where those would have needed new lasting state in the simulation:
+
+| # | Map | Goal | God, as built |
+|---|---|---|---|
+| V The Appian Way | random, 96 | reach the three allied towns (Capua, Cumae, Neapolis: allied **with** you, `Stance::Friend`): your land touches theirs (`Objective::Reach`); the Samnites at war | Janus's gates on the way to the first town: holding them, three helpers come (no gates switch yet) |
+| VI A Pyrrhic Victory | random, 80 | take Pyrrhus's castle | the Field of Mars near Rome: his favour grows while six or more soldiers wait in the warehouses (drilling, `story::mars_drill`); at 50 and 80 three are promoted |
+| VII Mylae | islands, 96 | take a Carthaginian military building across the sea (the castle was beyond the computer stand-in in 3 hours) | Neptune's shrine on whatever island lies halfway: fish offered, at 50 five sailors join |
+| VIII Hannibal at the Gates | random, 96, more mountains | hold out 50 minutes (truce 15) | Cybele's temple near Rome; at minute 25 (Cannae) eight freed slaves, at 35 (her stone) five more join, while Rome holds it (no "Hannibal can't recruit" yet) |
+| IX Carthago delenda est | random, 112 (the siege was by land; the sea is VII's) | take Carthage's castle; Numidia fights on your side | the Field of Mars as in VI; Carthage's temple near its walls |
+| X The Gates of Janus | Europe (the world campaign's region, Rome in Italy: in the Mediterranean's Rome's slot was boxed in) | take Mark Antony's castle (his legions across the Alps; Cleopatra in the story) | Janus's gates near Rome: five veterans when held |
+
+The goals soak (the computer playing each chapter as the player, 6 seeds, 3 hours at most)
+wins 57-58 of 60: every chapter 6/6 except Mylae 5/6 and Carthage 5/6 (a game too long).
+
+## The deeper check (2026-10-27)
+
+All ten chapters were checked once more: every chapter started in the game and played for three
+minutes; the goals soak on normal as well as easy (normal: 37 of 40, Pyrrhus beating the
+computer stand-in in 2 of 6, a fair defeat for a ★★★ chapter); where each holy place lands, on
+which landmass; and a reading of every text against the code and the sources. Fixed after it:
+six years from Veii to the Allia (not thirty); 217 BC for Trasimene and Fabius; the last Picus no
+longer the grandson's grandson of the first; Antony's fleet in Greece; chapter I's ending true
+whether or not the Capitol was held; Tarpeia before the dawn of the war; blessings without fixed
+numbers; "you" in the beats, not the commander's name; Manius Curius Dentatus, who beat Pyrrhus,
+in place of Laevinus, who lost to him; the abduction named plainly; Cybele's temple inside Rome's
+first land (Cannae's freed slaves come in every game); Neptune's shrine "on a coast"; and German
+wording.
 
 ## Medals
 

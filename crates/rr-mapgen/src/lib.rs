@@ -22,9 +22,9 @@ pub struct GenParams {
     /// An archipelago: every realm on its own island, uninhabited islands with ore and forest
     /// between them, open sea around (owner, 2026-10-27: "make harbors meaningful").
     pub islands: bool,
-    /// The Roman campaign's first map: seven hills by a river, two castles on fixed hills
+    /// A map of the Roman campaign: the seven hills by a river, two castles on fixed hills
     /// (`rome::seven_hills`; the size and the player count stay the caller's).
-    pub seven_hills: bool,
+    pub rome: Option<rome::RomeMap>,
 }
 
 impl Default for GenParams {
@@ -38,7 +38,7 @@ impl Default for GenParams {
             mountains: 14,
             landscape: Landscape::Greenland,
             islands: false,
-            seven_hills: false,
+            rome: None,
         }
     }
 }
@@ -152,13 +152,12 @@ pub fn generate(p: &GenParams) -> MapData {
     }
 
     // 2. start positions: land, not mountain, far apart (or the seven hills' own)
-    let hq =
-        if p.seven_hills { rome::seven_hills(p, &grid, &mut elev) } else { start_positions(p, &grid, &elev, &mut rng) };
+    let hq = start_positions(p, &grid, &mut elev, &mut rng);
     islands_mask(p, &grid, &mut elev, &hq, &mut rng);
     // 3. stamp a fair start area per player: flat meadow, a mountain, a lake
     for (i, h) in hq.iter().enumerate() {
         // (a castle on one of the seven hills keeps its hill: a small plateau at its top)
-        let (base, r) = if p.seven_hills { (elev[grid.index(*h)], 4.0) } else { (0.45, 9.0) };
+        let (base, r) = if p.rome.is_some() { (elev[grid.index(*h)], 4.0) } else { (0.45, 9.0) };
         for c in grid.within(*h, r as u16) {
             let d = grid.distance(*h, c) as f32;
             let k = grid.index(c);
@@ -166,7 +165,7 @@ pub fn generate(p: &GenParams) -> MapData {
             elev[k] = base + (elev[k] - base) * t * t;
         }
         // (the seven hills have no start mountain or lake: their layout is fixed)
-        if p.seven_hills {
+        if p.rome.is_some() {
             continue;
         }
         let dir = Direction::from_index((i as u8 * 2 + rng.below(6) as u8) % 6);
@@ -337,8 +336,12 @@ pub fn generate(p: &GenParams) -> MapData {
     map
 }
 
-/// The castles: on land, not mountain, far apart; the first at random.
-fn start_positions(p: &GenParams, grid: &Grid, elev: &[f32], rng: &mut Pcg32) -> Vec<MapCoord> {
+/// The castles: on land, not mountain, far apart; the first at random (or the seven hills').
+fn start_positions(p: &GenParams, grid: &Grid, elev: &mut [f32], rng: &mut Pcg32) -> Vec<MapCoord> {
+    // (the seven hills shape the land and place the castles themselves)
+    if p.rome.is_some() {
+        return rome::seven_hills(p, grid, elev);
+    }
     let mut hq: Vec<MapCoord> = Vec::new();
     let cands: Vec<MapCoord> =
         grid.coords().filter(|c| (0.38..0.6).contains(&elev[grid.index(*c)]) && c.y % 2 == 0).collect();

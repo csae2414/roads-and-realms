@@ -3,7 +3,7 @@
 use crate::figures::{FigKind, Motion, Step};
 use crate::{AttackPlan, BState, BuildingId, Event, FigId, PlayerId, RejectReason, Sim, SoundCue};
 use rr_core::{Direction, MapCoord, Purpose};
-use rr_rules::{BuildingType, Job};
+use rr_rules::{BuildingType, Job, Ware};
 use std::collections::BTreeMap;
 
 /// Frames per fight round, and the fights' clock (RTTR noFighting: 15 a strike; fidelity #10).
@@ -966,6 +966,130 @@ impl Sim {
             }
             return;
         }
+        let old = self.change_owner(target, new_owner);
+        let pos = self.buildings[target].pos;
+        self.soldier_move_in(attacker, target);
+        self.events.push(Event::BuildingCaptured { player: old, at: pos, by: new_owner });
+        self.check_defeat(old);
+    }
+
+    /// A story beat gives the player's military building at `at` to `to` (`Cmd::HandOver`): its
+    /// soldiers walk home, then it changes hands as a captured one does, standing empty until
+    /// its new owner's soldiers come. It keeps its land.
+    pub(crate) fn cmd_hand_over(&mut self, player: PlayerId, at: MapCoord, to: PlayerId) -> Result<(), RejectReason> {
+        let b = self.building_at(at).ok_or(RejectReason::NotFound)?;
+        let bd = &self.buildings[b];
+        let military = self.rules.building(bd.kind).is_military();
+        if bd.player != player || to == player || to as usize >= self.players.len() || !bd.is_ready() || !military {
+            return Err(RejectReason::NotAllowed);
+        }
+        for s in std::mem::take(&mut self.buildings[b].soldiers) {
+            self.figures[s].inside = None;
+            self.figures[s].pos = at;
+            self.figure_lost_home(s);
+        }
+        // its soldiers away (attacking, defending) have no home there any more
+        let away: Vec<FigId> = self
+            .figures
+            .iter()
+            .filter(|(_, f)| {
+                f.player == player
+                    && matches!(&f.kind, FigKind::Soldier(
+                        SoldierTask::Attack { home, .. }
+                        | SoldierTask::AtTarget { home, .. }
+                        | SoldierTask::Intercept { home, .. }
+                        | SoldierTask::ToShip { home, .. }
+                        | SoldierTask::Defend(home)
+                        | SoldierTask::Return(home),
+                    ) if *home == b)
+            })
+            .map(|(i, _)| i)
+            .collect();
+        for s in away {
+            self.figure_lost_home(s);
+        }
+        self.change_owner(b, to);
+        self.events.push(Event::BuildingCaptured { player, at, by: to });
+        Ok(())
+    }
+
+    /// An offering at a holy place the player holds (`Cmd::Offer`): `n` of `ware` from its
+    /// warehouses, the castle first, all or nothing.
+    pub(crate) fn cmd_offer(&mut self, player: PlayerId, at: MapCoord, ware: Ware, n: u32) -> Result<(), RejectReason> {
+        if rr_world::holy_god(self.world.obj(at)).is_none() || n == 0 {
+            return Err(RejectReason::NotFound);
+        }
+        if self.world.holy_holder(at) != rr_world::Holder::Player(player) {
+            return Err(RejectReason::NotYourTerritory);
+        }
+        if self.player_inventory(player).ware(ware) < n {
+            return Err(RejectReason::NotAllowed);
+        }
+        let stores: Vec<BuildingId> = self.warehouses_of(player);
+        let mut left = n;
+        for b in stores {
+            if let Some(inv) = self.buildings[b].inventory.as_mut() {
+                let take = inv.wares[ware.index()].min(left);
+                inv.wares[ware.index()] -= take;
+                left -= take;
+            }
+        }
+        self.events.push(Event::Offered { player, at, ware, n });
+        Ok(())
+    }
+
+    /// A god's answer (`Cmd::Bless`): `n` privates in the player's warehouses, the castle first,
+    /// become privates first class, or (`recruit`) `n` new privates come to the castle; only
+    /// while the player holds the holy place at `at`.
+    pub(crate) fn cmd_bless(
+        &mut self,
+        player: PlayerId,
+        at: MapCoord,
+        n: u32,
+        recruit: bool,
+    ) -> Result<(), RejectReason> {
+        if rr_world::holy_god(self.world.obj(at)).is_none()
+            || self.world.holy_holder(at) != rr_world::Holder::Player(player)
+        {
+            return Err(RejectReason::NotAllowed);
+        }
+        if recruit {
+            let hq = self.warehouses_of(player).first().copied().ok_or(RejectReason::NotFound)?;
+            if let Some(inv) = self.buildings[hq].inventory.as_mut() {
+                inv.jobs[Job::Private.index()] += n;
+            }
+            return Ok(());
+        }
+        let mut left = n;
+        for b in self.warehouses_of(player) {
+            if let Some(inv) = self.buildings[b].inventory.as_mut() {
+                let k = inv.jobs[Job::Private.index()].min(left);
+                inv.jobs[Job::Private.index()] -= k;
+                inv.jobs[Job::PrivateFirstClass.index()] += k;
+                left -= k;
+            }
+        }
+        Ok(())
+    }
+
+    /// The player's warehouses, the castle first, then by id (deterministic).
+    fn warehouses_of(&self, player: PlayerId) -> Vec<BuildingId> {
+        let hq = self.players[player as usize].hq;
+        let mut out: Vec<BuildingId> = hq.into_iter().collect();
+        out.extend(
+            self.buildings
+                .iter()
+                .filter(|(id, b)| b.player == player && b.inventory.is_some() && Some(*id) != hq)
+                .map(|(id, _)| id),
+        );
+        out
+    }
+
+    /// A military building passes to `new_owner` (a capture, a story's hand-over): its flag
+    /// with it, its roads torn down, the old owner's people on their way to it sent home.
+    /// Returns the old owner.
+    fn change_owner(&mut self, target: BuildingId, new_owner: PlayerId) -> PlayerId {
+        let tb = self.buildings[target].clone();
         let old = tb.player;
         // the flag changes hands; its roads are torn down
         let flag = tb.flag;
@@ -1003,15 +1127,12 @@ impl Sim {
         bd.soldiers_coming = 0;
         bd.garrison_wanted = most;
         bd.state = BState::Ready;
-        let pos = bd.pos;
-        self.soldier_move_in(attacker, target);
-        self.events.push(Event::BuildingCaptured { player: old, at: pos, by: new_owner });
         self.territory_dirty = true;
         self.players[old as usize].road_epoch += 1;
         self.route_cache.borrow_mut().clear();
         self.players[new_owner as usize].road_epoch += 1;
         self.route_cache.borrow_mut().clear();
-        self.check_defeat(old);
+        old
     }
 
     /// Soldiers of `player` away from their building (attacking, waiting, defending at the flag,

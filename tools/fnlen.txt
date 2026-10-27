@@ -12,5 +12,5 @@ crates/rr-app/src/ui.rs::panels 251
 crates/rr-app/src/ui.rs::windows 255
 crates/rr-cli/src/main.rs::soak 230
 crates/rr-formats/src/wld.rs::read 162
-crates/rr-mapgen/src/lib.rs::generate 215
+crates/rr-mapgen/src/lib.rs::generate 214
 crates/rr-mapgen/src/region.rs::generate_with_rivers 332

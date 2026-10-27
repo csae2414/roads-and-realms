@@ -2232,7 +2232,7 @@ dependencies = [
 
 [[package]]
 name = "rr-ai"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "miniz_oxide 0.9.1",
  "postcard",
@@ -2246,7 +2246,7 @@ dependencies = [
 
 [[package]]
 name = "rr-app"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "eframe",
  "image",
@@ -2267,7 +2267,7 @@ dependencies = [
 
 [[package]]
 name = "rr-audio"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "rodio",
  "rr-core",
@@ -2278,7 +2278,7 @@ dependencies = [
 
 [[package]]
 name = "rr-cli"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "rr-ai",
  "rr-core",
@@ -2291,14 +2291,14 @@ dependencies = [
 
 [[package]]
 name = "rr-core"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "rr-formats"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "postcard",
  "rr-core",
@@ -2307,18 +2307,19 @@ dependencies = [
 
 [[package]]
 name = "rr-game"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "rr-ai",
  "rr-core",
  "rr-mapgen",
  "rr-rules",
  "rr-sim",
+ "rr-world",
 ]
 
 [[package]]
 name = "rr-mapgen"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "rr-core",
  "rr-world",
@@ -2326,7 +2327,7 @@ dependencies = [
 
 [[package]]
 name = "rr-net"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "postcard",
  "rr-ai",
@@ -2340,7 +2341,7 @@ dependencies = [
 
 [[package]]
 name = "rr-rules"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "rr-core",
  "serde",
@@ -2349,7 +2350,7 @@ dependencies = [
 
 [[package]]
 name = "rr-sim"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "postcard",
  "rr-core",
@@ -2360,7 +2361,7 @@ dependencies = [
 
 [[package]]
 name = "rr-world"
-version = "0.1.0"
+version = "0.9.56"
 dependencies = [
  "rr-core",
  "serde",

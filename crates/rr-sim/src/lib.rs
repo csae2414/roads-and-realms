@@ -268,6 +268,28 @@ pub enum Cmd {
     StartExploration {
         harbor: MapCoord,
     },
+    /// A story beat: the player's military building at `at` goes over to player `to`, its
+    /// soldiers walking home (the Roman campaign's Tarpeia; ours, not RTTR's). Only the owner's
+    /// own command can give a building away.
+    HandOver {
+        at: MapCoord,
+        to: PlayerId,
+    },
+    /// An offering at the holy place at `at` (the Roman campaign's gods): `n` of `ware` leave the
+    /// player's warehouses, only while the player holds the place (`World::holy_holder`).
+    Offer {
+        at: MapCoord,
+        ware: Ware,
+        n: u32,
+    },
+    /// A god's answer (a story's deed): `n` of the player's privates in its warehouses become
+    /// privates first class, or (`recruit`) `n` new privates come to its castle; only while the
+    /// player holds the holy place at `at`.
+    Bless {
+        at: MapCoord,
+        n: u32,
+        recruit: bool,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -291,7 +313,10 @@ impl Cmd {
             | Cmd::SetShipyardMode { at, .. }
             | Cmd::SetReserve { at, .. }
             | Cmd::SendHome { at }
-            | Cmd::SetPriority { at, .. } => vec![*at],
+            | Cmd::SetPriority { at, .. }
+            | Cmd::HandOver { at, .. }
+            | Cmd::Offer { at, .. }
+            | Cmd::Bless { at, .. } => vec![*at],
             Cmd::BuildRoad { from, .. } => vec![*from],
             Cmd::RemoveRoad { flag, .. } | Cmd::UpgradeRoad { flag, .. } => vec![*flag],
             Cmd::SendGeologist { flag } | Cmd::SendScout { flag } => vec![*flag],
@@ -417,6 +442,13 @@ pub enum Event {
         player: PlayerId,
         at: MapCoord,
         by: PlayerId,
+    },
+    /// The player offered `n` of `ware` at the holy place at `at` (`Cmd::Offer`).
+    Offered {
+        player: PlayerId,
+        at: MapCoord,
+        ware: Ware,
+        n: u32,
     },
 }
 
@@ -638,7 +670,7 @@ pub struct Sim {
 pub const SAVE_VERSION: u32 = 17;
 /// Raise on any change to the rules of play that doesn't change the save format (network games
 /// must run the same simulation everywhere).
-pub const SIM_VERSION: u32 = 54;
+pub const SIM_VERSION: u32 = 56;
 /// Most soldiers of one rank a warehouse can hold in reserve.
 pub const MAX_RESERVE: u8 = 20;
 const SAVE_MAGIC: &[u8; 8] = b"RRSAVE\0\0";
@@ -1149,6 +1181,9 @@ impl Sim {
             Cmd::UpgradeRoad { .. } => Err(RejectReason::NotAllowed),
             Cmd::StartExpedition { harbor } => self.cmd_start_expedition(player, *harbor),
             Cmd::StartExploration { harbor } => self.cmd_start_exploration(player, *harbor),
+            Cmd::HandOver { at, to } => self.cmd_hand_over(player, *at, *to),
+            Cmd::Offer { at, ware, n } => self.cmd_offer(player, *at, *ware, *n),
+            Cmd::Bless { at, n, recruit } => self.cmd_bless(player, *at, *n, *recruit),
             Cmd::SendExpedition { harbor, to } => self.cmd_send_expedition(player, *harbor, *to),
             Cmd::Surrender => {
                 self.defeat(player);

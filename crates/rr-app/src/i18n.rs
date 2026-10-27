@@ -53,7 +53,14 @@ fn compose<'a>(stored: &'a str, tr: impl Fn(&'a str) -> &'a str) -> String {
 
 /// The message templates (checked by a test, as they don't go through `tr` literally).
 #[cfg(test)]
-const TEMPLATES: [&str; 91] = [
+const TEMPLATES: [&str; 98] = [
+    "Goal: reach {1} allied towns ({2} so far)",
+    "Favour: {1} of 100",
+    "Offer {1} {2}",
+    "In store: {1}",
+    "Goal: take one rival military building ({1} so far)",
+    "Goal: take {1} rival military buildings ({2} so far)",
+    "Concordia's favour: {1} of 100. At 50, one battle fewer brings the peace.",
     "Held by {1}: its god is with them.",
     "{1} of {2}",
     "building site, {1} % done",
@@ -199,8 +206,460 @@ pub fn tr(s: &str) -> &str {
 /// their own, and templates filled with building names don't depend on their gender.
 const DE: &[(&str, &str)] = &[
     (
-        "Your land lies all around the Capitol now, and Picus climbs to the augurs' platform. Twelve vultures circle over the hill, twice the six Remus saw. \"Jupiter has answered,\" says Picus. \"From up here you will see far.\"",
-        "Dein Land liegt jetzt rund um das Kapitol, und Picus steigt auf die Plattform der Auguren. Zwölf Geier kreisen über dem Hügel, doppelt so viele, wie Remus gesehen hat. „Jupiter hat geantwortet“, sagt Picus. „Von hier oben wirst du weit sehen.“",
+        "Your land lies all around the Capitol now, and Picus climbs to the augurs' platform. Twelve vultures circle over the hill. \"Jupiter has answered,\" says Picus. \"From up here you will see far.\"",
+        "Dein Land liegt jetzt rund um das Kapitol, und Picus steigt auf die Plattform der Auguren. Zwölf Geier kreisen über dem Hügel. „Jupiter hat geantwortet“, sagt Picus. „Von hier oben wirst du weit sehen.“",
+    ),
+    // the Roman campaign, chapter II
+    (
+        "Sabine spears in the valley at dawn: Titus Tatius is at war with you. Picus: \"Now we will learn who keeps your gates.\"",
+        "Sabinische Speere im Tal bei Tagesanbruch: Titus Tatius führt Krieg gegen dich. Picus: „Jetzt werden wir sehen, wer deine Tore hütet.“",
+    ),
+    ("The Sabine Peace", "Der Sabinerfrieden"),
+    ("Titus Tatius", "Titus Tatius"),
+    ("Goal: take two Sabine military buildings.", "Ziel: Nimm zwei Militärgebäude der Sabiner ein."),
+    (
+        "Chapter II: soldiers, a betrayal, and a first war that ends in peace.",
+        "Kapitel II: Soldaten, ein Verrat und ein erster Krieg, der mit Frieden endet.",
+    ),
+    (
+        "Rome has walls now, and too few women. At the feast of Consus your men seized the Sabines' daughters and made them their wives, and their fathers have not forgiven it. The Sabine king Titus Tatius rules the Quirinal across the valley, at peace with you for now.\n\nHere you learn war: a brewery for beer, swords and shields from your store, soldiers recruited in the castle, and your first attack. Keep your posts manned: Tatius will not wait forever. Between the two hills stands Concordia's shrine: where your land meets the Sabines' there, the women carry gifts across, and the peace comes sooner.",
+        "Rom hat jetzt Mauern, aber zu wenige Frauen. Beim Fest des Consus haben deine Männer die Töchter der Sabiner geraubt und zu ihren Frauen gemacht, und ihre Väter haben es nicht verziehen. Der Sabinerkönig Titus Tatius herrscht auf dem Quirinal jenseits des Tals und hält vorerst Frieden mit dir.\n\nHier lernst du den Krieg: eine Brauerei für Bier, Schwerter und Schilde aus deinem Lager, Soldaten, die in der Burg ausgebildet werden, und deinen ersten Angriff. Halte deine Posten besetzt: Tatius wird nicht ewig warten. Zwischen den beiden Hügeln steht ein Heiligtum der Concordia: Wo dein Land dort an das der Sabiner stößt, tragen die Frauen Geschenke hinüber, und der Frieden kommt früher.",
+    ),
+    (
+        "Rome stands, but it is a town of men. At the feast of Consus your men seized the daughters of their Sabine guests and made them their wives, and their fathers have not forgiven it. Across the valley, on the Quirinal, the Sabine king Titus Tatius gathers his people. Between the two hills stands an old shrine of Concordia. Picus, the augur, has served you since the vultures.",
+        "Rom steht, aber es ist eine Stadt der Männer. Beim Fest des Consus haben deine Männer die Töchter ihrer sabinischen Gäste geraubt und zu ihren Frauen gemacht, und deren Väter haben es nicht verziehen. Jenseits des Tals, auf dem Quirinal, sammelt der Sabinerkönig Titus Tatius sein Volk. Zwischen den beiden Hügeln steht ein altes Heiligtum der Concordia. Picus, der Augur, dient dir seit den Geiern.",
+    ),
+    (
+        "Sabine banners on the Quirinal. Titus Tatius sends no herald. Picus: \"A king who sends no word is counting his spears.\"",
+        "Sabinische Banner auf dem Quirinal. Titus Tatius schickt keinen Herold. Picus: „Ein König, der kein Wort schickt, zählt seine Speere.“",
+    ),
+    (
+        "Hersilia, your wife, comes to you: \"Our families are across the valley. Where your land meets theirs by Concordia's shrine, we can carry them bread, and they will see that we are well.\"",
+        "Hersilia, deine Frau, kommt zu dir: „Unsere Familien sind jenseits des Tals. Wo dein Land beim Heiligtum der Concordia an ihres stößt, können wir ihnen Brot bringen, und sie sehen, dass es uns gut geht.“",
+    ),
+    (
+        "The women have carried bread across the valley for many days now. Hersilia: \"Our fathers ask for us by name. One battle, and they will listen to us.\"",
+        "Seit vielen Tagen tragen die Frauen Brot über das Tal. Hersilia: „Unsere Väter fragen nach uns, jeden beim Namen. Eine Schlacht, und sie werden auf uns hören.“",
+    ),
+    (
+        "At night Tarpeia, the daughter of the commander of your post nearest the Sabines, opens its gate to them. She asked for what they wore on their left arms: she meant their gold bracelets, and they gave her their shields. (Another telling says she meant to trick them out of their shields.) The post is theirs, and its soldiers come home to you.",
+        "In der Nacht öffnet Tarpeia, die Tochter des Befehlshabers deines Postens, der den Sabinern am nächsten liegt, ihnen das Tor. Sie verlangte, was die Sabiner am linken Arm trugen, und meinte damit ihre goldenen Armreifen; doch die Sabiner gaben ihr ihre Schilde. (Eine andere Erzählung sagt, sie wollte sie um ihre Schilde betrügen.) Der Posten gehört nun ihnen, und seine Soldaten kommen zu dir heim.",
+    ),
+    (
+        "You have taken a Sabine post. Picus: \"Tatius has lost ground before. He has never lost his pride.\"",
+        "Du hast einen Posten der Sabiner eingenommen. Picus: „Tatius hat schon früher Land verloren. Seinen Stolz hat er nie verloren.“",
+    ),
+    (
+        "The armies meet in the marshy valley below the Capitol. Then the women run between the lines, their hair loose, their children in their arms: \"If you must fight, fight us, not each other. We are wives on one side and daughters on the other.\" The fathers lower their spears. Romulus and Titus Tatius make peace and rule together: Romans and Sabines, one people on two hills. Picus marks the place where the women stood. One day it will be the Forum.",
+        "Die Heere treffen sich im sumpfigen Tal unter dem Kapitol. Da laufen die Frauen zwischen die Reihen, mit offenem Haar, die Kinder auf dem Arm: „Wenn ihr kämpfen müsst, dann kämpft gegen uns, nicht gegeneinander. Auf der einen Seite sind wir Ehefrauen, auf der anderen Töchter.“ Die Väter senken die Speere. Romulus und Titus Tatius schließen Frieden und herrschen gemeinsam: Römer und Sabiner, ein Volk auf zwei Hügeln. Picus markiert die Stelle, an der die Frauen standen. Eines Tages wird hier das Forum sein.",
+    ),
+    (
+        "Goal: take one rival military building ({1} so far)",
+        "Ziel: Nimm ein gegnerisches Militärgebäude ein ({1} bisher)",
+    ),
+    (
+        "Goal: take {1} rival military buildings ({2} so far)",
+        "Ziel: Nimm {1} gegnerische Militärgebäude ein ({2} bisher)",
+    ),
+    ("Concordia's shrine, a holy place", "Das Heiligtum der Concordia, ein heiliger Ort"),
+    (
+        "Concordia's favour: {1} of 100. At 50, one battle fewer brings the peace.",
+        "Die Gunst der Concordia: {1} von 100. Ab 50 bringt eine Schlacht weniger den Frieden.",
+    ),
+    (
+        "Your land and your rival's meet here: the women carry gifts across.",
+        "Dein Land und das deines Gegners treffen sich hier: Die Frauen tragen Geschenke hinüber.",
+    ),
+    (
+        "Bring your land up to her shrine, beside your rival's, and the women carry gifts across.",
+        "Bring dein Land bis an ihr Heiligtum, neben das deines Gegners, und die Frauen tragen Geschenke hinüber.",
+    ),
+    // the Roman campaign, chapter III
+    ("Veii", "Veji"),
+    ("Camillus", "Camillus"),
+    ("Goal: take the castle of Veii.", "Ziel: Nimm die Burg von Veji ein."),
+    (
+        "Chapter III: geologists, mines and the weapons chain against a fortified city.",
+        "Kapitel III: Geologen, Bergwerke und die Waffenkette gegen eine befestigte Stadt.",
+    ),
+    (
+        "Veii, the rich Etruscan city, stands on its rock across the valley, behind posts manned by trained soldiers. Its king will not wait for you: after the truce, Veii fights.\n\nHere you learn the weapons chain: send geologists into the hills, build mines and feed their miners (fish, meat or bread), smelt iron with coal, and let the armory make swords and shields. Only an army of many soldiers takes Veii. Juno's old altar stands on your side of the valley: where your land lies all around it, offerings of bread win her over.",
+        "Veji, die reiche Stadt der Etrusker, steht auf ihrem Felsen jenseits des Tals, hinter Posten mit erfahrenen Soldaten. Ihr König wird nicht auf dich warten: Nach der Waffenruhe kämpft Veji.\n\nHier lernst du die Waffenkette: Schicke Geologen in die Hügel, baue Bergwerke und versorge ihre Bergleute (Fisch, Fleisch oder Brot), schmelze Eisen mit Kohle, und lass die Waffenschmiede Schwerter und Schilde machen. Nur ein Heer aus vielen Soldaten nimmt Veji ein. Junos alter Altar steht auf deiner Seite des Tals: Wo dein Land ganz um ihn liegt, gewinnen Opfergaben aus Brot die Göttin.",
+    ),
+    (
+        "Rome has grown for three hundred years, and one city has always stood in its way: Veii, the rich Etruscan city on its rock across the valley, behind walls no army has broken. The senate sends you, Marcus Furius Camillus. Picus, of the augurs' house, rides with you: \"Veii's walls are stone. Its goddess is Juno. Take her, and the walls are nothing.\"",
+        "Rom ist dreihundert Jahre lang gewachsen, und eine Stadt stand ihm immer im Weg: Veji, die reiche Stadt der Etrusker auf ihrem Felsen jenseits des Tals, hinter Mauern, die kein Heer gebrochen hat. Der Senat schickt dich, Marcus Furius Camillus. Picus aus dem Haus der Auguren reitet mit dir: „Vejis Mauern sind aus Stein. Seine Göttin ist Juno. Gewinne sie, und die Mauern sind nichts.“",
+    ),
+    (
+        "Veii's towers on the rock. Its soldiers have trained for generations: you will need iron, and many swords. Picus: \"Geologists first. The hills here are full of ore.\"",
+        "Vejis Türme auf dem Felsen. Seine Soldaten üben seit Generationen: Du wirst Eisen brauchen und viele Schwerter. Picus: „Zuerst Geologen. Die Hügel hier sind voller Erz.“",
+    ),
+    (
+        "Picus shows you an old altar of Juno on your side of the valley, facing Veii: \"When your land lies all around it, offer bread there. Juno is the city's goddess; we will ask her to come to Rome.\"",
+        "Picus zeigt dir einen alten Altar der Juno auf deiner Seite des Tals, mit Blick auf Veji: „Wenn dein Land ganz um ihn liegt, opfere dort Brot. Juno ist die Göttin der Stadt; wir werden sie bitten, nach Rom zu kommen.“",
+    ),
+    (
+        "Smoke from Juno's altar drifts towards Veii. Picus: \"She listens. Keep the bread coming, though the miners grumble.\"",
+        "Rauch von Junos Altar zieht nach Veji hinüber. Picus: „Sie hört zu. Bring weiter Brot, auch wenn die Bergleute murren.“",
+    ),
+    (
+        "You have taken one of Veii's posts. Its soldiers fought like veterans, and they were. Picus: \"Every post we take is a gate less around the rock.\"",
+        "Du hast einen Posten von Veji eingenommen. Seine Soldaten kämpften wie Veteranen, und das waren sie. Picus: „Jeder Posten, den wir nehmen, ist ein Tor weniger um den Felsen.“",
+    ),
+    (
+        "Your miners dig a tunnel through the rock, right up under the temple of Juno in the citadel. Camillus asks the goddess aloud to leave the city and come to a temple worthy of her in Rome, and the story says she nodded. Veii falls after ten years of war. Juno's statue is carried to the Aventine. Picus writes in the augurs' book: \"We did not take her. She came.\"",
+        "Deine Bergleute graben einen Tunnel durch den Felsen, bis unter den Tempel der Juno in der Zitadelle. Camillus bittet die Göttin laut, die Stadt zu verlassen und in einen Tempel nach Rom zu kommen, der ihrer würdig ist, und die Geschichte sagt, sie habe genickt. Veji fällt nach zehn Jahren Krieg. Junos Statue wird auf den Aventin getragen. Picus schreibt in das Buch der Auguren: „Wir haben sie nicht genommen. Sie ist gekommen.“",
+    ),
+    (
+        "Picus comes running from the altar: \"Juno has heard you. She is leaving Veii for Rome.\" Soldiers waiting in your warehouses swear they saw her in a dream. They train with new heart: some of them are privates first class now.",
+        "Picus kommt vom Altar gelaufen: „Juno hat dich gehört. Sie verlässt Veji und kommt nach Rom.“ Soldaten, die in deinen Lagern warten, schwören, sie im Traum gesehen zu haben. Sie üben mit neuem Mut: Einige von ihnen sind jetzt Obergefreite.",
+    ),
+    (
+        "In Veii, the priests find Juno's statue turned towards Rome. More of your waiting soldiers rise a rank. Picus: \"A city its goddess has left is only walls.\"",
+        "In Veji finden die Priester Junos Statue nach Rom gewandt. Weitere deiner wartenden Soldaten steigen einen Rang auf. Picus: „Eine Stadt, die ihre Göttin verlassen hat, ist nur noch Mauern.“",
+    ),
+    ("Juno's altar, a holy place", "Junos Altar, ein heiliger Ort"),
+    (
+        "Yours: click it to offer bread, and Juno may leave Veii for Rome.",
+        "Deiner: Klicke ihn an, um Brot zu opfern, und Juno kommt vielleicht von Veji nach Rom.",
+    ),
+    ("Favour: {1} of 100", "Gunst: {1} von 100"),
+    ("Offer {1} {2}", "Opfere {1} {2}"),
+    ("Your land must lie all around it first.", "Zuerst muss dein Land ganz um ihn liegen."),
+    ("From your warehouses, the castle first.", "Aus deinen Lagern, zuerst aus der Burg."),
+    ("In store: {1}", "Im Lager: {1}"),
+    // the Roman campaign, chapter IV
+    ("The Geese of the Capitol", "Die Gänse des Kapitols"),
+    ("Marcus Manlius", "Marcus Manlius"),
+    ("Brennus", "Brennus"),
+    ("The Senones", "Die Senonen"),
+    ("Goal: hold out 45 minutes until Camillus comes.", "Ziel: Halte 45 Minuten aus, bis Camillus kommt."),
+    (
+        "Chapter IV: defence. Hold the hills against a stronger invader.",
+        "Kapitel IV: Verteidigung. Halte die Hügel gegen einen stärkeren Eindringling.",
+    ),
+    (
+        "The Gauls have beaten Rome's army at the Allia and are coming for the city: two war bands of the Senones, stronger than you and soon here. You cannot beat them in the field. Hold the hills until Camillus comes with an army.\n\nHere you learn defence: man the posts that face the north, set the military window so the border holds more soldiers than the inland, keep beer, swords and shields coming for new recruits, and use catapults. Juno's temple on the Capitol is yours: feed her sacred geese with grain, and they may wake the guards.",
+        "Die Gallier haben Roms Heer an der Allia geschlagen und ziehen gegen die Stadt: zwei Kriegerscharen der Senonen, stärker als du und bald hier. Im Feld kannst du sie nicht schlagen. Halte die Hügel, bis Camillus mit einem Heer kommt.\n\nHier lernst du die Verteidigung: Besetze die Posten, die nach Norden blicken, stelle im Militärfenster ein, dass an der Grenze mehr Soldaten stehen als im Inneren, halte Bier, Schwerter und Schilde für neue Rekruten bereit und nutze Katapulte. Junos Tempel auf dem Kapitol gehört dir: Füttere ihre heiligen Gänse mit Getreide, und sie wecken vielleicht die Wachen.",
+    ),
+    (
+        "Six years after Veii the Gauls come over the mountains: the Senones under their chief Brennus. At the river Allia they scatter Rome's army in a single afternoon, and the road to the city lies open. Rome cannot fight them in the field. You hold the hills, and above all the Capitol, where Juno's sacred geese are kept. Picus: \"Hold out until Camillus comes. He is raising an army.\"",
+        "Sechs Jahre nach Veji kommen die Gallier über die Berge: die Senonen unter ihrem Anführer Brennus. Am Fluss Allia zerstreuen sie Roms Heer an einem einzigen Nachmittag, und der Weg zur Stadt liegt offen. Im Feld kann Rom sie nicht schlagen. Du hältst die Hügel, vor allem das Kapitol, wo Junos heilige Gänse gehalten werden. Picus: „Halte aus, bis Camillus kommt. Er sammelt ein Heer.“",
+    ),
+    (
+        "Gaulish horns in the north. The Senones are taller than any Roman, and they fight with long swords. Picus: \"Do not go out to them. Let them come to the walls.\"",
+        "Gallische Hörner im Norden. Die Senonen sind größer als jeder Römer und kämpfen mit langen Schwertern. Picus: „Zieh nicht hinaus zu ihnen. Lass sie an die Mauern kommen.“",
+    ),
+    (
+        "Picus at Juno's temple: \"The geese are hungry, and so are we. But a fed goose is a watchful goose. Some grain for them, now and then.\"",
+        "Picus an Junos Tempel: „Die Gänse sind hungrig, und wir auch. Aber eine gefütterte Gans ist eine wachsame Gans. Ab und zu etwas Getreide für sie.“",
+    ),
+    (
+        "A post has fallen to the Gauls. Picus: \"Let them have the plain. Keep the hills.\"",
+        "Ein Posten ist an die Gallier gefallen. Picus: „Lass ihnen die Ebene. Halte die Hügel.“",
+    ),
+    (
+        "A messenger slips through the Gaulish lines: Camillus is coming with an army. Hold out a little longer.",
+        "Ein Bote schlüpft durch die gallischen Linien: Camillus kommt mit einem Heer. Halte noch ein wenig aus.",
+    ),
+    (
+        "Camillus arrives as Brennus is weighing the gold Rome must pay to be left alone, with false weights, and his sword thrown onto the scale: \"Vae victis\", woe to the defeated. Camillus answers that Rome pays with iron, not with gold, and drives the Gauls from the city. From that year on a goose is carried through Rome on a purple cushion. Picus writes: \"Rome was saved by birds, and by the men they woke.\"",
+        "Camillus kommt, als Brennus das Gold wiegt, das Rom zahlen muss, um in Ruhe gelassen zu werden, mit falschen Gewichten und seinem Schwert auf der Waage: „Vae victis“, wehe den Besiegten. Camillus antwortet, Rom zahle mit Eisen, nicht mit Gold, und vertreibt die Gallier aus der Stadt. Von diesem Jahr an wird eine Gans auf einem purpurnen Kissen durch Rom getragen. Picus schreibt: „Rom wurde von Vögeln gerettet, und von den Männern, die sie weckten.“",
+    ),
+    (
+        "At night the Gauls climb the rock of the Capitol, so quietly that not even the dogs wake. But Juno's geese cackle and beat their wings. You leap up and throw the first Gaul off the cliff, and the others fall with him. At dawn five men who were thought too old or too young to fight join the defenders.",
+        "In der Nacht klettern die Gallier den Felsen des Kapitols hinauf, so leise, dass nicht einmal die Hunde aufwachen. Doch Junos Gänse schnattern und schlagen mit den Flügeln. Du springst auf und stößt den ersten Gallier vom Felsen, und die anderen stürzen mit ihm. Im Morgengrauen schließen sich fünf Männer, die man für zu alt oder zu jung zum Kämpfen hielt, den Verteidigern an.",
+    ),
+    ("Juno's temple and her sacred geese, a holy place", "Junos Tempel und ihre heiligen Gänse, ein heiliger Ort"),
+    (
+        "Yours: click it to feed the sacred geese grain. Well fed, they may wake the guards.",
+        "Deiner: Klicke ihn an, um den heiligen Gänsen Getreide zu geben. Gut gefüttert, wecken sie vielleicht die Wachen.",
+    ),
+    // the Roman campaign, chapters V-X
+    (
+        "Before Carthage, the soldiers who wait in your warehouses drill as they did on the Field of Mars at home. Some of them are promoted: privates first class now.",
+        "Vor Karthago üben die Soldaten, die in deinen Lagern warten, wie daheim auf dem Marsfeld. Einige von ihnen werden befördert: Jetzt sind sie Obergefreite.",
+    ),
+    (
+        "Mars stays with the army before Carthage. More of your soldiers rise a rank.",
+        "Mars bleibt beim Heer vor Karthago. Weitere deiner Soldaten steigen einen Rang auf.",
+    ),
+    ("The Britons", "Die Britannier"),
+    ("The Suebi", "Die Sueben"),
+    ("The Dacians", "Die Daker"),
+    ("The Appian Way", "Die Via Appia"),
+    (
+        "Chapter V: long roads, donkeys and warehouses to reach three allied towns.",
+        "Kapitel V: lange Straßen, Esel und Lagerhäuser, um drei verbündete Städte zu erreichen.",
+    ),
+    (
+        "Goal: reach the three allied towns: your land must touch theirs.",
+        "Ziel: Erreiche die drei verbündeten Städte; dein Land muss an ihres stoßen.",
+    ),
+    (
+        "The Samnites hold the mountains, and once they trapped a Roman army in the pass of the Caudine Forks. Never again, says the censor Appius Claudius: Rome will build a road, paved and straight, to its allies in the south, so that the legions reach them in days, not weeks.\n\nHere you learn logistics: long roads, flags close together, donkeys on the busy roads (a donkey breeder), warehouses on the way, and the transport window's order. Reach the allied towns of Capua, Cumae and Neapolis: your land must touch theirs. The Samnites will try to cut your way. Janus's gates stand on the road: hold them, and the god of beginnings sends you helpers.",
+        "Die Samniten halten die Berge, und einmal haben sie ein römisches Heer im Pass der Caudinischen Gabeln gefangen. Nie wieder, sagt der Zensor Appius Claudius: Rom baut eine Straße, gepflastert und gerade, zu seinen Verbündeten im Süden, damit die Legionen sie in Tagen erreichen statt in Wochen.\n\nHier lernst du den Nachschub: lange Straßen, Fahnen dicht beieinander, Esel auf den belebten Straßen (ein Eselzüchter), Lagerhäuser unterwegs und die Reihenfolge im Transportfenster. Erreiche die verbündeten Städte Capua, Cumae und Neapolis: Dein Land muss an ihres stoßen. Die Samniten werden versuchen, deinen Weg zu durchschneiden. An der Straße stehen die Tore des Janus: Halte sie, und der Gott der Anfänge schickt dir Helfer.",
+    ),
+    (
+        "312 BC. The war with the Samnites drags on in the mountains of the south, and Rome's allies there wait weeks for every legion. The censor Appius Claudius has a plan the senate laughs at: a road of stone from Rome to Capua, straight as a spear. Picus of the augurs' house marks the first stone: \"Janus opens every road. Ask him well.\"",
+        "312 v. Chr. Der Krieg mit den Samniten zieht sich in den Bergen des Südens hin, und Roms Verbündete dort warten Wochen auf jede Legion. Der Zensor Appius Claudius hat einen Plan, über den der Senat lacht: eine Straße aus Stein von Rom nach Capua, gerade wie ein Speer. Picus aus dem Haus der Auguren setzt den ersten Stein: „Janus öffnet jeden Weg. Bitte ihn gut.“",
+    ),
+    (
+        "The Appian Way reaches Capua, and the legions march south in five days. The Samnites fight on for years, but they never trap a Roman army again. Appius Claudius goes blind in his old age; the road he built still carries Rome. Picus writes: \"Some gods answer with birds. Janus answered with a road.\"",
+        "Die Via Appia erreicht Capua, und die Legionen marschieren in fünf Tagen nach Süden. Die Samniten kämpfen noch jahrelang, aber nie wieder fangen sie ein römisches Heer. Appius Claudius erblindet im Alter; die Straße, die er gebaut hat, trägt Rom noch immer. Picus schreibt: „Manche Götter antworten mit Vögeln. Janus antwortete mit einer Straße.“",
+    ),
+    (
+        "Samnite riders on the ridges. Picus: \"They remember the Caudine Forks. So do we.\"",
+        "Samnitische Reiter auf den Kämmen. Picus: „Sie erinnern sich an die Caudinischen Gabeln. Wir auch.“",
+    ),
+    (
+        "The first miles are paved. Picus: \"Roads are slow to build and quick to cut. Warehouses on the way, and donkeys where the carriers wait.\"",
+        "Die ersten Meilen sind gepflastert. Picus: „Straßen baut man langsam und durchschneidet sie schnell. Lagerhäuser unterwegs, und Esel, wo die Träger warten.“",
+    ),
+    (
+        "The Samnites take a post by the road. Your eyes are already failing, and you only say: \"Rebuild it, and pave further.\"",
+        "Die Samniten nehmen einen Posten an der Straße. Deine Augen werden schon schwach, und du sagst nur: „Baut ihn wieder auf, und pflastert weiter.“",
+    ),
+    (
+        "Your land closes around the old gates of Janus by the road. Picus opens them: \"Janus looks both ways, back to Rome and on to the south.\" Three men from the road's camps take up arms for you.",
+        "Dein Land schließt sich um die alten Tore des Janus an der Straße. Picus öffnet sie: „Janus blickt in beide Richtungen, zurück nach Rom und weiter nach Süden.“ Drei Männer aus den Lagern an der Straße greifen für dich zu den Waffen.",
+    ),
+    ("Appius Claudius", "Appius Claudius"),
+    ("Capua", "Capua"),
+    ("Cumae", "Cumae"),
+    ("Neapolis", "Neapolis"),
+    ("The Samnites", "Die Samniten"),
+    ("A Pyrrhic Victory", "Ein Pyrrhussieg"),
+    (
+        "Chapter VI: soldier quality, gold and promotions against a master of war.",
+        "Kapitel VI: Qualität der Soldaten, Gold und Beförderungen gegen einen Meister des Krieges.",
+    ),
+    ("Goal: take the castle of Pyrrhus.", "Ziel: Nimm die Burg des Pyrrhus ein."),
+    (
+        "King Pyrrhus of Epirus has crossed to Italy to fight for the Greek cities of the south, with elephants and an army trained in every war since Alexander. His soldiers are few, but each is worth three of yours.\n\nHere you learn soldier quality: gold mines and a mint, coins for the military buildings so their soldiers are promoted, and attacks with your strongest soldiers. The Field of Mars lies near Rome: while six or more soldiers wait in your warehouses, they drill there, Mars's favour grows, and he promotes some of them.",
+        "König Pyrrhus von Epirus ist nach Italien übergesetzt, um für die griechischen Städte des Südens zu kämpfen, mit Elefanten und einem Heer, das in jedem Krieg seit Alexander geübt hat. Er hat wenige Soldaten, aber jeder wiegt drei der deinen auf.\n\nHier lernst du die Qualität der Soldaten: Goldbergwerke und eine Münzprägerei, Münzen für die Militärgebäude, damit ihre Soldaten befördert werden, und Angriffe mit deinen stärksten Soldaten. Das Marsfeld liegt nahe bei Rom: Solange sechs oder mehr Soldaten in deinen Lagern warten, üben sie dort, die Gunst des Mars wächst, und er befördert einige von ihnen.",
+    ),
+    (
+        "280 BC. The Greek city of Tarentum has called a king from across the sea: Pyrrhus of Epirus, a cousin of Alexander, with elephants no Roman has ever seen. At Heraclea and Asculum his phalanx and his elephants break Rome's legions. Now the command is yours, Manius Curius Dentatus. Picus walks with you on the Field of Mars by the river: \"We cannot buy soldiers like his. We can make them.\"",
+        "280 v. Chr. Die griechische Stadt Tarent hat einen König von jenseits des Meeres gerufen: Pyrrhus von Epirus, einen Vetter Alexanders, mit Elefanten, die noch kein Römer gesehen hat. Bei Herakleia und Asculum zerschlagen seine Phalanx und seine Elefanten Roms Legionen. Jetzt hast du den Befehl, Manius Curius Dentatus. Picus geht mit dir über das Marsfeld am Fluss: „Soldaten wie seine können wir nicht kaufen. Wir können sie machen.“",
+    ),
+    (
+        "At Beneventum, in 275 BC, you beat Pyrrhus at last, and he leaves Italy, his army spent. Another such victory, he is said to have told his friends, and I am lost. Rome has learned that it can lose battles and still win the war, as long as it keeps making soldiers. Picus writes: \"Mars does not love the bravest army. He loves the one that drills.\"",
+        "Bei Beneventum, 275 v. Chr., schlägst du Pyrrhus endlich, und er verlässt Italien, sein Heer ist aufgerieben. Noch so ein Sieg, soll er zu seinen Freunden gesagt haben, und ich bin verloren. Rom hat gelernt, dass es Schlachten verlieren und doch den Krieg gewinnen kann, solange es weiter Soldaten macht. Picus schreibt: „Mars liebt nicht das tapferste Heer. Er liebt das, das übt.“",
+    ),
+    (
+        "Elephants at the edge of your land. Your carriers run from them, and so do some of your soldiers. Picus: \"Beasts are only beasts. Soldiers are made.\"",
+        "Elefanten am Rand deines Landes. Deine Träger fliehen vor ihnen, und manche deiner Soldaten auch. Picus: „Tiere sind nur Tiere. Soldaten werden gemacht.“",
+    ),
+    (
+        "Picus: \"Keep soldiers in the castle, and let them drill on Mars's field. Coins for the posts at the front: a soldier who has been promoted does not run.\"",
+        "Picus: „Halte Soldaten in der Burg und lass sie auf dem Marsfeld üben. Münzen für die Posten an der Front: Ein beförderter Soldat läuft nicht davon.“",
+    ),
+    (
+        "You have taken a post from Pyrrhus. His envoy Cineas comes with gifts and talk of peace. The senate sends him home: no peace while a foreign king stands in Italy.",
+        "Du hast Pyrrhus einen Posten abgenommen. Sein Gesandter Kineas kommt mit Geschenken und Reden vom Frieden. Der Senat schickt ihn heim: kein Frieden, solange ein fremder König in Italien steht.",
+    ),
+    (
+        "A post falls to Pyrrhus, but his own losses are heavy. Picus: \"He wins every battle, and his army grows smaller with each.\"",
+        "Ein Posten fällt an Pyrrhus, doch seine eigenen Verluste sind schwer. Picus: „Er gewinnt jede Schlacht, und mit jeder wird sein Heer kleiner.“",
+    ),
+    (
+        "The soldiers drilling on the Field of Mars see a woodpecker, Mars's bird, land on their standard. Some of them are promoted that day: privates first class now.",
+        "Die Soldaten, die auf dem Marsfeld üben, sehen einen Specht, den Vogel des Mars, auf ihrer Standarte landen. Einige von ihnen werden an diesem Tag befördert: Jetzt sind sie Obergefreite.",
+    ),
+    (
+        "Mars is pleased with the drill. More soldiers rise a rank, and the whole army hears of it.",
+        "Mars ist mit den Übungen zufrieden. Weitere Soldaten steigen einen Rang auf, und das ganze Heer hört davon.",
+    ),
+    ("Curius", "Curius"),
+    ("Pyrrhus", "Pyrrhus"),
+    ("Mylae", "Mylae"),
+    (
+        "Chapter VII: harbours, ships and attacks across the sea.",
+        "Kapitel VII: Häfen, Schiffe und Angriffe über das Meer.",
+    ),
+    (
+        "Goal: take a Carthaginian military building across the sea.",
+        "Ziel: Nimm ein Militärgebäude Karthagos jenseits des Meeres ein.",
+    ),
+    (
+        "Carthage rules the sea, and its fleet has never lost. Rome has no ships at all. You, Gaius Duilius, will change that: build a harbour on a free coast, switch a shipyard to sea ships, and carry your soldiers across.\n\nHere you learn seafaring: harbour spots (the anchors), shipyards, expeditions that found a colony on another coast, and attacks from the sea. Neptune's shrine stands on a coast between you and Carthage: offer fish there, and he may send you sailors.",
+        "Karthago beherrscht das Meer, und seine Flotte hat nie verloren. Rom hat überhaupt keine Schiffe. Du, Gaius Duilius, wirst das ändern: Baue einen Hafen an einer freien Küste, stelle eine Werft auf Seeschiffe um und bring deine Soldaten hinüber.\n\nHier lernst du die Seefahrt: Hafenplätze (die Anker), Werften, Expeditionen, die an einer anderen Küste eine Kolonie gründen, und Angriffe vom Meer aus. An einer Küste zwischen dir und Karthago steht ein Heiligtum Neptuns: Opfere dort Fisch, und er schickt dir vielleicht Seeleute.",
+    ),
+    (
+        "260 BC. The war with Carthage has come to Sicily, and Carthage's ships sail where they like. Rome has never built a warship. Then a Carthaginian ship runs aground on the coast, and Roman carpenters take it apart plank by plank and build a hundred like it in sixty days. Picus, who has never been to sea, looks at the waves: \"Neptune decides. We had better ask him.\"",
+        "260 v. Chr. Der Krieg mit Karthago hat Sizilien erreicht, und Karthagos Schiffe fahren, wohin sie wollen. Rom hat noch nie ein Kriegsschiff gebaut. Da läuft ein karthagisches Schiff an der Küste auf Grund, und römische Zimmerleute nehmen es Planke für Planke auseinander und bauen in sechzig Tagen hundert wie dieses. Picus, der noch nie auf See war, betrachtet die Wellen: „Neptun entscheidet. Wir sollten ihn besser fragen.“",
+    ),
+    (
+        "At Mylae Duilius' boarding bridges fall onto the Carthaginian decks, and Roman soldiers fight there as on land. Carthage loses its first battle at sea. Rome gives Duilius a column decorated with the bronze rams of the captured ships, and a flute player to walk before him at night for the rest of his life. Picus writes: \"Neptune let us cross. I still do not like the sea.\"",
+        "Bei Mylae fallen die Enterbrücken des Duilius auf die karthagischen Decks, und römische Soldaten kämpfen dort wie an Land. Karthago verliert seine erste Seeschlacht. Rom schenkt Duilius eine Säule, geschmückt mit den bronzenen Rammspornen der erbeuteten Schiffe, und einen Flötenspieler, der ihm für den Rest seines Lebens nachts vorangeht. Picus schreibt: „Neptun hat uns übersetzen lassen. Ich mag das Meer trotzdem nicht.“",
+    ),
+    (
+        "Picus: \"A harbour first, on a coast with an anchor sign. Then a shipyard, and switch it to ships. Carthage will not come to us.\"",
+        "Picus: „Zuerst einen Hafen, an einer Küste mit einem Ankerzeichen. Dann eine Werft, und stelle sie auf Schiffe um. Karthago wird nicht zu uns kommen.“",
+    ),
+    (
+        "Your first ship is on the water. Its rowers are farmers who learned to row on benches on the beach. You have a boarding bridge fixed to every bow: \"We fight at sea as we fight on land.\"",
+        "Dein erstes Schiff ist auf dem Wasser. Seine Ruderer sind Bauern, die auf Bänken am Strand rudern gelernt haben. Du lässt an jedem Bug eine Enterbrücke befestigen: „Wir kämpfen auf See wie an Land.“",
+    ),
+    (
+        "Carthaginian sails on the horizon. Their crews laugh at your heavy ships. Picus: \"Let them laugh until the bridges fall.\"",
+        "Karthagische Segel am Horizont. Ihre Mannschaften lachen über deine schweren Schiffe. Picus: „Lass sie lachen, bis die Brücken fallen.“",
+    ),
+    (
+        "You have taken a post on Carthage's shore. Picus: \"The sea is a road too, it seems.\"",
+        "Du hast einen Posten an Karthagos Küste eingenommen. Picus: „Das Meer ist also auch eine Straße.“",
+    ),
+    (
+        "Fishermen from every coast have seen the smoke of your offerings at Neptune's shrine. Five of them come to row and to fight for Rome: privates in your castle now.",
+        "Fischer von allen Küsten haben den Rauch deiner Opfer an Neptuns Heiligtum gesehen. Fünf von ihnen kommen, um für Rom zu rudern und zu kämpfen: Jetzt sind sie Gefreite in deiner Burg.",
+    ),
+    ("Gaius Duilius", "Gaius Duilius"),
+    ("Carthage", "Karthago"),
+    ("Hannibal at the Gates", "Hannibal vor den Toren"),
+    (
+        "Chapter VIII: hold out against Hannibal, and let time fight for you.",
+        "Kapitel VIII: Halte gegen Hannibal aus, und lass die Zeit für dich kämpfen.",
+    ),
+    (
+        "Goal: hold out 50 minutes, until Scipio sails for Africa.",
+        "Ziel: Halte 50 Minuten aus, bis Scipio nach Afrika segelt.",
+    ),
+    (
+        "Hannibal has crossed the Alps with his army and his elephants and beaten every army Rome sent against him. You are Quintus Fabius Maximus, dictator: do not meet him in the open. Hold the strong places, let him come to you, and let Italy itself wear him down.\n\nHold out fifty minutes, until Scipio is ready to sail for Africa. Cybele's temple stands near Rome: the Sibylline books say the invader leaves Italy only when the Great Mother comes to Rome. Hold it, and Rome's people rally to you.",
+        "Hannibal hat mit seinem Heer und seinen Elefanten die Alpen überquert und jedes Heer geschlagen, das Rom gegen ihn schickte. Du bist Quintus Fabius Maximus, Diktator: Stelle dich ihm nicht im offenen Feld. Halte die festen Plätze, lass ihn zu dir kommen, und lass Italien selbst ihn zermürben.\n\nHalte fünfzig Minuten aus, bis Scipio bereit ist, nach Afrika zu segeln. Nahe bei Rom steht der Tempel der Kybele: Die Sibyllinischen Bücher sagen, der Eindringling verlässt Italien erst, wenn die Große Mutter nach Rom kommt. Halte ihn, und Roms Volk sammelt sich bei dir.",
+    ),
+    (
+        "217 BC. Hannibal of Carthage has done what no one thought possible: he has crossed the Alps with an army and elephants, and beaten Rome at the Trebia and at Lake Trasimene. The senate names you dictator, Quintus Fabius Maximus. Picus, who has heard the Sibylline books read, tells you: \"Do not meet him in the open. Let him come to you.\"",
+        "217 v. Chr. Hannibal von Karthago hat getan, was niemand für möglich hielt: Er hat mit einem Heer und Elefanten die Alpen überquert und Rom an der Trebia und am Trasimenischen See geschlagen. Der Senat ernennt dich zum Diktator, Quintus Fabius Maximus. Picus, der die Sibyllinischen Bücher hat vorlesen hören, sagt dir: „Stelle dich ihm nicht im offenen Feld. Lass ihn zu dir kommen.“",
+    ),
+    (
+        "Scipio lands in Africa, and Carthage calls Hannibal home. After fifteen years in Italy he leaves without ever having taken Rome, and at Zama Scipio beats him. The name Cunctator becomes a title of honour. Picus writes: \"Fabius won no battle. He won the war.\"",
+        "Scipio landet in Afrika, und Karthago ruft Hannibal heim. Nach fünfzehn Jahren in Italien zieht er ab, ohne Rom je eingenommen zu haben, und bei Zama schlägt Scipio ihn. Der Name Cunctator wird zum Ehrentitel. Picus schreibt: „Fabius hat keine Schlacht gewonnen. Er hat den Krieg gewonnen.“",
+    ),
+    (
+        "Hannibal's army in the north: veterans of Spain and the Alps, who know their trade. Picus: \"Every soldier he loses is one he cannot replace. Ours we can.\"",
+        "Hannibals Heer im Norden: Veteranen aus Spanien und den Alpen, die ihr Handwerk verstehen. Picus: „Jeden Soldaten, den er verliert, kann er nicht ersetzen. Unsere können wir ersetzen.“",
+    ),
+    (
+        "The people of Rome call you Cunctator, the Delayer, and mean it as an insult. Picus: \"One day they will mean it as a title.\"",
+        "Das Volk von Rom nennt dich Cunctator, den Zauderer, und meint es als Beleidigung. Picus: „Eines Tages werden sie es als Ehrentitel meinen.“",
+    ),
+    (
+        "News from Apulia: the consul Varro has given battle at Cannae without you, and Hannibal has surrounded and destroyed the largest army Rome ever raised. Rome does not ask for peace.",
+        "Nachricht aus Apulien: Der Konsul Varro hat ohne dich bei Cannae die Schlacht gesucht, und Hannibal hat das größte Heer, das Rom je aufgestellt hat, eingeschlossen und vernichtet. Rom bittet nicht um Frieden.",
+    ),
+    (
+        "Scipio is gathering ships in Sicily. A few more minutes, and Rome strikes at Africa.",
+        "Scipio sammelt Schiffe auf Sizilien. Noch ein paar Minuten, und Rom schlägt in Afrika zu.",
+    ),
+    (
+        "Rome arms eight thousand slaves, promising them their freedom. Eight new privates come to your castle.",
+        "Rom bewaffnet achttausend Sklaven und verspricht ihnen die Freiheit. Acht neue Gefreite kommen in deine Burg.",
+    ),
+    (
+        "The Great Mother's stone arrives at Ostia, a black stone from Pessinus, and is carried to her temple while the people line the road. Five men who watched it pass join your army.",
+        "Der Stein der Großen Mutter kommt in Ostia an, ein schwarzer Stein aus Pessinus, und wird zu ihrem Tempel getragen, während das Volk die Straße säumt. Fünf Männer, die ihn vorbeiziehen sahen, schließen sich deinem Heer an.",
+    ),
+    ("Fabius", "Fabius"),
+    ("Hannibal", "Hannibal"),
+    ("Carthago delenda est", "Carthago delenda est"),
+    (
+        "Chapter IX: everything you have learned, in a long war on land.",
+        "Kapitel IX: alles, was du gelernt hast, in einem langen Krieg an Land.",
+    ),
+    ("Goal: take the castle of Carthage.", "Ziel: Nimm die Burg von Karthago ein."),
+    (
+        "Fifty years after Zama, Carthage is rich again, and in the senate old Cato ends every speech with the same words: Carthage must be destroyed. The senate sends you, Scipio Aemilianus. King Massinissa of Numidia fights on your side.\n\nThis chapter asks for everything at once: an economy that feeds an army, soldiers of high rank, and a long siege. The Field of Mars near Rome drills your waiting soldiers. Carthage's temple stands near its walls: where your land closes around it, its god no longer guards the city.",
+        "Fünfzig Jahre nach Zama ist Karthago wieder reich, und im Senat beendet der alte Cato jede Rede mit denselben Worten: Karthago muss zerstört werden. Der Senat schickt dich, Scipio Aemilianus. König Massinissa von Numidien kämpft auf deiner Seite.\n\nDieses Kapitel verlangt alles auf einmal: eine Wirtschaft, die ein Heer ernährt, Soldaten von hohem Rang und eine lange Belagerung. Das Marsfeld nahe bei Rom lässt deine wartenden Soldaten üben. Karthagos Tempel steht nahe seinen Mauern: Wo dein Land ihn umschließt, hütet sein Gott die Stadt nicht mehr.",
+    ),
+    (
+        "149 BC. Carthage has paid its debts to Rome and grown rich on trade. In the senate Cato holds up a fresh fig from Carthage: \"Picked three days ago, that close is Carthage.\" Every speech he ends the same way: Carthage must be destroyed. Picus is old now, and he doubts: \"Do the gods want this, or do we only say they do?\"",
+        "149 v. Chr. Karthago hat seine Schulden bei Rom bezahlt und ist durch den Handel reich geworden. Im Senat hält Cato eine frische Feige aus Karthago hoch: „Vor drei Tagen gepflückt, so nah ist Karthago.“ Jede Rede beendet er gleich: Karthago muss zerstört werden. Picus ist jetzt alt, und er zweifelt: „Wollen die Götter das, oder sagen wir nur, dass sie es wollen?“",
+    ),
+    (
+        "After three years of siege Carthage falls and burns for many days. Scipio Aemilianus watches the fire and weeps; he quotes Homer on the fall of Troy and says he fears the same day will come for Rome. Picus closes the augurs' book for this war: \"We asked the gods every morning. I am no longer sure they answered.\"",
+        "Nach drei Jahren Belagerung fällt Karthago und brennt viele Tage lang. Scipio Aemilianus sieht dem Feuer zu und weint; er zitiert Homer über den Fall Trojas und sagt, er fürchte, derselbe Tag werde einst für Rom kommen. Picus schließt das Buch der Auguren für diesen Krieg: „Wir haben die Götter jeden Morgen gefragt. Ich bin nicht mehr sicher, dass sie geantwortet haben.“",
+    ),
+    (
+        "Numidian horsemen ride beside your columns. King Massinissa is almost ninety years old and still in the saddle.",
+        "Numidische Reiter reiten neben deinen Kolonnen. König Massinissa ist fast neunzig Jahre alt und sitzt noch im Sattel.",
+    ),
+    (
+        "The walls of Carthage, the greatest you have seen, and behind them a city that will not surrender.",
+        "Die Mauern Karthagos, die größten, die du je gesehen hast, und dahinter eine Stadt, die sich nicht ergeben wird.",
+    ),
+    (
+        "A Carthaginian post falls. The city behind it does not ask for terms.",
+        "Ein karthagischer Posten fällt. Die Stadt dahinter bittet nicht um Bedingungen.",
+    ),
+    ("Scipio Aemilianus", "Scipio Aemilianus"),
+    ("Numidia", "Numidien"),
+    ("The Gates of Janus", "Die Tore des Janus"),
+    (
+        "Chapter X: the whole Mediterranean, and at the end, peace.",
+        "Kapitel X: das ganze Mittelmeer, und am Ende Frieden.",
+    ),
+    (
+        "Goal: take Mark Antony's castle. Then the gates of Janus close.",
+        "Ziel: Nimm die Burg des Marcus Antonius ein. Dann schließen sich die Tore des Janus.",
+    ),
+    (
+        "After a century of civil wars two men are left: you, Octavian, in Rome, and Mark Antony, Cleopatra's ally, his legions gathered in the north and his fleet in Greece. The Cantabri in Spain have never been tamed, and beyond the Rhine and the Channel the Germans and the Britons watch.\n\nEverything you have learned, on the whole Mediterranean. When Antony falls, the doors of the temple of Janus can close: Rome at peace everywhere, for the first time in two hundred years. Janus's gates stand near Rome: hold them, and veterans of every war come to serve you.",
+        "Nach einem Jahrhundert der Bürgerkriege sind zwei Männer übrig: du, Octavian, in Rom, und Marcus Antonius, der Verbündete Kleopatras, seine Legionen im Norden versammelt und seine Flotte vor Griechenland. Die Kantabrer in Spanien wurden nie unterworfen, und jenseits des Rheins und des Kanals schauen Germanen und Britannier zu.\n\nAlles, was du gelernt hast, auf dem ganzen Mittelmeer. Wenn Antonius fällt, können sich die Türen des Janustempels schließen: Rom überall im Frieden, zum ersten Mal seit zweihundert Jahren. Nahe bei Rom stehen die Tore des Janus: Halte sie, und Veteranen aller Kriege kommen, um dir zu dienen.",
+    ),
+    (
+        "31 BC. Julius Caesar is dead, and the Republic with him. Octavian, his adopted son, holds Rome; Mark Antony, with Cleopatra of Egypt as his ally, gathers his legions in the north and his fleet in Greece. The doors of the temple of Janus stand open, as they have stood for two hundred years: Rome is at war. The last of the house of Picus, a young augur, stands beside you: \"The first of my house saw the vultures over Rome's hills. I would like to see the gates close.\"",
+        "31 v. Chr. Julius Caesar ist tot, und mit ihm die Republik. Octavian, sein Adoptivsohn, hält Rom; Marcus Antonius, mit Kleopatra von Ägypten verbündet, sammelt seine Legionen im Norden und seine Flotte vor Griechenland. Die Türen des Janustempels stehen offen, wie seit zweihundert Jahren: Rom ist im Krieg. Der letzte aus dem Haus des Picus, ein junger Augur, steht neben dir: „Der Erste meines Hauses sah die Geier über Roms Hügeln. Ich würde gern sehen, wie sich die Tore schließen.“",
+    ),
+    (
+        "At Actium Agrippa's ships break Antony's fleet; Antony and Cleopatra die in Egypt. In 29 BC the doors of the temple of Janus are closed: Rome is at peace on every coast. Octavian will soon be called Augustus. The last Picus writes the last line in the augurs' book: \"The gods guided Rome, and Rome used the gods. Both were true, and the gates are closed.\"",
+        "Bei Actium zerschlagen Agrippas Schiffe die Flotte des Antonius; Antonius und Kleopatra sterben in Ägypten. 29 v. Chr. werden die Türen des Janustempels geschlossen: Rom ist an allen Küsten im Frieden. Octavian wird bald Augustus genannt werden. Der letzte Picus schreibt die letzte Zeile in das Buch der Auguren: „Die Götter haben Rom geführt, und Rom hat die Götter benutzt. Beides war wahr, und die Tore sind geschlossen.“",
+    ),
+    (
+        "Antony's legions in the north, and Cleopatra's gold behind them. Your friend Agrippa: \"Give me soldiers, and I will give you Antony.\"",
+        "Die Legionen des Antonius im Norden, und Kleopatras Gold hinter ihnen. Dein Freund Agrippa: „Gib mir Soldaten, und ich gebe dir Antonius.“",
+    ),
+    (
+        "The Cantabri in their mountains, who have fought every Roman army for a hundred years. Picus: \"Antony first. Spain will wait.\"",
+        "Die Kantabrer in ihren Bergen, die seit hundert Jahren gegen jedes römische Heer kämpfen. Picus: „Zuerst Antonius. Spanien kann warten.“",
+    ),
+    (
+        "You have taken one of your rivals' posts. Picus: \"Every gate that falls is a step towards the one that closes.\"",
+        "Du hast einen Posten deiner Gegner eingenommen. Picus: „Jedes Tor, das fällt, ist ein Schritt zu dem, das sich schließt.“",
+    ),
+    (
+        "Your land closes around the old gates of Janus. The young Picus touches the bronze: \"When Rome is at peace everywhere, we close them.\" Veterans of every war come to see them, and five stay to serve you.",
+        "Dein Land schließt sich um die alten Tore des Janus. Der junge Picus berührt die Bronze: „Wenn Rom überall im Frieden ist, schließen wir sie.“ Veteranen aller Kriege kommen, um sie zu sehen, und fünf bleiben, um dir zu dienen.",
+    ),
+    ("Octavian", "Octavian"),
+    ("The Cantabri", "Die Kantabrer"),
+    ("Mark Antony", "Marcus Antonius"),
+    ("Parthia", "Parthien"),
+    ("Cleopatra", "Kleopatra"),
+    ("Goal: reach {1} allied towns ({2} so far)", "Ziel: Erreiche {1} verbündete Städte ({2} bisher)"),
+    ("Allied with you:", "Mit dir verbündet:"),
+    ("The gates of Janus, a holy place", "Die Tore des Janus, ein heiliger Ort"),
+    ("The Field of Mars, a holy place", "Das Marsfeld, ein heiliger Ort"),
+    ("Neptune's shrine, a holy place", "Neptuns Heiligtum, ein heiliger Ort"),
+    ("Cybele's temple, a holy place", "Der Tempel der Kybele, ein heiliger Ort"),
+    ("Carthage's temple, a holy place", "Karthagos Tempel, ein heiliger Ort"),
+    (
+        "Yours: Janus, the god of gates and roads, watches over your way.",
+        "Deiner: Janus, der Gott der Tore und Wege, wacht über deinen Weg.",
+    ),
+    (
+        "Yours: while six or more soldiers wait in your warehouses, they drill here, and Mars's favour grows.",
+        "Deiner: Solange sechs oder mehr Soldaten in deinen Lagern warten, üben sie hier, und die Gunst des Mars wächst.",
+    ),
+    (
+        "Yours: click it to offer fish, and Neptune may send you sailors.",
+        "Deiner: Klicke ihn an, um Fisch zu opfern, und Neptun schickt dir vielleicht Seeleute.",
+    ),
+    ("Yours: the Great Mother watches over Rome.", "Deiner: Die Große Mutter wacht über Rom."),
+    (
+        "Yours: Carthage's own god no longer guards its walls.",
+        "Deiner: Karthagos eigener Gott hütet seine Mauern nicht mehr.",
     ),
     // the map's hover (hover.rs)
     ("Jupiter's augur platform, a holy place", "Jupiters Auguren-Plattform, ein heiliger Ort"),
@@ -210,7 +669,7 @@ const DE: &[(&str, &str)] = &[
         "Deiner: Jupiters Vögel zeigen dir das Land weit um den Hügel.",
     ),
     ("Yours: its god is with you.", "Deiner: Sein Gott ist mit dir."),
-    ("Held by {1}: its god is with them.", "Gehalten von {1}: Sein Gott steht auf dieser Seite."),
+    ("Held by {1}: its god is with them.", "Gehalten von {1}: Sein Gott steht auf ihrer Seite."),
     (
         "Contested: a border runs through its ring, so nobody may use it.",
         "Umkämpft: Eine Grenze läuft durch seinen Ring, darum kann ihn niemand nutzen.",
@@ -293,8 +752,8 @@ const DE: &[(&str, &str)] = &[
         "Faustulus, der Hirte, der dich und Remus großgezogen hat, kommt vom Aventin herüber: „Remus beobachtet jeden Morgen den Himmel. Sechs Geier hat er gezählt, sagt er, und er schwört, er habe sie zuerst gesehen.“",
     ),
     (
-        "The hills are yours, and the sign was yours: twelve vultures against six. The city takes your name: Roma. The old tellings disagree about what became of Remus; his people stay and build on the Aventine as Romans. Picus marks the day for the calendar, the twenty-first of April. Across the valley, the Sabines watch the new walls.",
-        "Die Hügel gehören dir, und das Zeichen war deines: zwölf Geier gegen sechs. Die Stadt trägt deinen Namen: Roma. Was aus Remus wurde, erzählen die alten Geschichten verschieden; seine Leute bleiben und bauen als Römer auf dem Aventin. Picus trägt den Tag in den Kalender ein, den einundzwanzigsten April. Jenseits des Tals betrachten die Sabiner die neuen Mauern.",
+        "The hills are yours, and the sky gave its sign: twelve vultures for Romulus, six for Remus. The city takes your name: Roma. The old tellings disagree about what became of Remus; his people stay and build on the Aventine as Romans. Picus marks the day for the calendar, the twenty-first of April. Across the valley, the Sabines watch the new walls.",
+        "Die Hügel gehören dir, und der Himmel gab sein Zeichen: zwölf Geier für Romulus, sechs für Remus. Die Stadt trägt deinen Namen: Roma. Was aus Remus wurde, erzählen die alten Geschichten verschieden; seine Leute bleiben und bauen als Römer auf dem Aventin. Picus trägt den Tag in den Kalender ein, den einundzwanzigsten April. Jenseits des Tals betrachten die Sabiner die neuen Mauern.",
     ),
     // the campaign's story (rr_game::story), in the order it is told
     (

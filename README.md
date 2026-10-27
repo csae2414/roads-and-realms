@@ -44,6 +44,13 @@ wood and stone to gold coins, and push your borders with soldiers.
 - Code: GPL-3.0-or-later (`rr-core`: MIT OR Apache-2.0). Art pack: CC-BY-SA-4.0. Music/sounds: CC0 (see `assets/PROVENANCE.md`).
 - No original game data is included or needed. (Loading original `.WLD/.SWD` maps from your own copy works: `--map FILE`.)
 
+## Download
+
+Ready-built games for Linux and Windows (x86_64) are on the
+[releases page](https://github.com/csae2414/roads-and-realms/releases): unpack, then start `rr-app`
+(`rr-app.exe` on Windows). On Linux, `./install-launcher.sh` adds it to the desktop's app grid.
+Saves and settings go to `~/.local/share/roads-and-realms` (Linux) or `%APPDATA%\roads-and-realms` (Windows).
+
 ## Play
 
 ```
@@ -74,7 +81,13 @@ hour passed), and a won mission ends with what it led to.
 skill; a chapter opens once the one before it is won). Built so far: **I · The Augury**, Romulus on the seven hills
 by the Tiber, Remus at peace on the Aventine. Goal: hold 35 % of the land. Its holy place, Jupiter's augur platform on the
 Capitol, serves whoever's land lies fully around it: far sight from the hill. Medals per chapter (on easy the times are
-half as long again).
+half as long again). **II · The Sabine Peace**: the Sabines across the valley, Tarpeia's betrayal at
+minute 20, a first war; Concordia's favour, where both lands reach her shrine, makes the peace come sooner.
+Goal: take two Sabine military buildings. **III · Veii**: geologists, mines and the weapons chain against a
+fortified Etruscan city; offer bread at Juno's altar, and she answers. Goal: take Veii's castle. **IV · The Geese of the Capitol**: hold the hills
+45 minutes against two Gaulish war bands; feed Juno's sacred geese, and they wake the guards. **V-X**: the Appian
+Way to three allied towns, Pyrrhus and his elephants, Mylae (Rome's first fleet), Hannibal (hold out 50 minutes),
+Carthage, and Actium: when Mark Antony falls, the gates of Janus close.
 
 A win keeps its time and score per level (gold, silver or bronze in the hover).
 

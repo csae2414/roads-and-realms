@@ -140,6 +140,10 @@ pub struct Session {
     /// The small stories told this game (`new_stories` bits; they travel in the save), and the
     /// campaign story's beats (`rr_game::story::beat_bit`).
     pub stories: u32,
+    /// The story's deeds done this game (`rr_game::story::deed_bit`; in the save).
+    pub deeds: u32,
+    /// The chapter's god's favour with us, 0-100 (Concordia's; in the save).
+    pub favour: u32,
     /// For the story's beats: we captured a rival's building, we lost a military one.
     pub story_captured: bool,
     pub story_lost: bool,
@@ -1067,6 +1071,13 @@ impl App {
     /// What the campaign story's beats wait for in this frame's events: a capture of ours, a
     /// military building of ours lost.
     fn story_facts(&mut self, events: &[Event]) {
+        for e in events {
+            if let Event::Offered { player, n, .. } = e
+                && *player == self.player
+            {
+                self.session.favour = (self.session.favour + OFFER_FAVOUR * n).min(100);
+            }
+        }
         let me = self.player;
         for e in events {
             match e {
@@ -1109,11 +1120,46 @@ impl App {
                 .holy_places()
                 .iter()
                 .any(|(p, _)| sim.world().holy_holder(*p) == rr_world::Holder::Player(me)),
+            favour: self.session.favour,
         };
+        // Concordia's favour grows where the lands meet at her shrine
+        let near = rr_game::story::concordia_near(sim, me) || rr_game::story::mars_drill(sim, me);
+        self.session.favour = rr_game::story::favour_step(self.session.favour, near, sim.gf().0);
+        let deeds = rr_game::story::due_deeds(tale, &seen, self.session.deeds);
         for (bit, line) in rr_game::story::due(tale, &seen, self.session.stories) {
             self.session.stories |= bit;
             self.note(crate::i18n::tr(line).into());
             self.messages.push_front(Message::new(self.sim.gf().0, line.into(), None, MSG_GENERAL));
+        }
+        for (bit, deed) in deeds {
+            self.session.deeds |= bit;
+            self.do_deed(deed);
+        }
+    }
+
+    /// What a story's deed does in the game (`rr_game::story::Deed`).
+    fn do_deed(&mut self, deed: rr_game::story::Deed) {
+        use rr_game::story::Deed;
+        match deed {
+            Deed::HandOver { to, line } => {
+                if let Some(at) = rr_game::story::hand_over_spot(&self.sim, self.player, to) {
+                    self.cmd(Cmd::HandOver { at, to });
+                    self.note(crate::i18n::tr(line).into());
+                    self.messages.push_front(Message::new(self.sim.gf().0, line.into(), Some(at), MSG_GENERAL));
+                }
+            }
+            Deed::Bless { n, recruit, line } => {
+                if let Some(at) = rr_game::story::held_holy_place(&self.sim, self.player) {
+                    self.cmd(Cmd::Bless { at, n, recruit });
+                    self.note(crate::i18n::tr(line).into());
+                    self.messages.push_front(Message::new(self.sim.gf().0, line.into(), Some(at), MSG_GENERAL));
+                }
+            }
+            Deed::War { with } => {
+                for ai in self.ais.iter_mut().filter(|a| a.player == with) {
+                    ai.truce = None;
+                }
+            }
         }
     }
 
@@ -1351,6 +1397,13 @@ impl App {
     fn mission_won(&mut self) {
         let Some(key) = self.args.mission.clone() else { return };
         self.session.epilogue = true;
+        // a gentle chapter ends in peace, for good (the Sabines: the women stood between)
+        if crate::missions::mission(&key).is_some_and(|m| m.gentle) {
+            let me = self.player;
+            for ai in self.ais.iter_mut() {
+                ai.truce = Some((me, u32::MAX));
+            }
+        }
         if !self.won_missions.contains(&key) {
             self.won_missions.push(key.clone());
         }
@@ -1374,7 +1427,13 @@ impl App {
     /// The goal of this game: a campaign mission's, or a map mission's (map maker round 1, #2).
     pub fn objective(&self) -> Option<crate::missions::Objective> {
         match self.args.mission.as_deref().and_then(crate::missions::mission) {
-            Some(m) => Some(m.objective),
+            // (Concordia's favour at 50: one building fewer to take; never none)
+            Some(m) => Some(match m.objective {
+                crate::missions::Objective::Vanquish(n) if self.session.favour >= FAVOUR_EASIER => {
+                    crate::missions::Objective::Vanquish(n.saturating_sub(1).max(1))
+                }
+                o => o,
+            }),
             None => self.session.map_mission.as_ref().and_then(|m| m.objective),
         }
     }
@@ -2064,8 +2123,10 @@ impl App {
     }
 
     pub fn save_path() -> std::path::PathBuf {
+        // (Linux: $XDG_DATA_HOME or ~/.local/share; Windows: %APPDATA%)
         let base = std::env::var_os("XDG_DATA_HOME")
             .map(std::path::PathBuf::from)
+            .or_else(|| std::env::var_os("APPDATA").map(std::path::PathBuf::from))
             .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share")))
             .unwrap_or_else(|| ".".into());
         base.join("roads-and-realms").join("quick.rrsave")
@@ -2257,6 +2318,8 @@ impl App {
         let meta = SaveMeta {
             behind_told: self.session.behind_told,
             stories: self.session.stories,
+            deeds: self.session.deeds,
+            favour: self.session.favour,
             castles_lost: self.session.castles_lost.clone(),
             level: Some(self.args.ai_level),
             player: Some(self.player),
@@ -2315,6 +2378,8 @@ impl App {
             land_goal: self.args.land_goal,
             behind_told: self.session.behind_told,
             stories: self.session.stories,
+            deeds: self.session.deeds,
+            favour: self.session.favour,
             castles_lost: self.session.castles_lost.clone(),
             peace: self.args.peace,
             time_limit: self.args.time_limit,
@@ -2407,6 +2472,8 @@ impl App {
                 self.args.map = meta.map;
                 self.session.behind_told = meta.behind_told;
                 self.session.stories = meta.stories;
+                self.session.deeds = meta.deeds;
+                self.session.favour = meta.favour;
                 self.session.castles_lost = meta.castles_lost;
                 // a loaded game can't be replayed from its start
                 self.recorder = None;
@@ -2539,8 +2606,10 @@ impl App {
             }
             // and, once the pointer has rested a while longer, what is there in words
             let rested = resp.ctx.input(|i| i.pointer.time_since_last_movement()) >= HOVER_WORDS_SECS;
-            let lines = crate::hover::lines(&self.sim, self.player, node);
-            if rested && self.session.road.is_none() && !lines.is_empty() {
+            let lines = crate::hover::lines(&self.sim, self.player, node, self.session.favour);
+            // (not over the window of the very point it would describe)
+            let own_window = self.ui.action.is_some_and(|a| a.node == node);
+            if rested && self.session.road.is_none() && !lines.is_empty() && !own_window {
                 hover_box(&resp.ctx, pos, &lines);
             }
         }
@@ -2959,6 +3028,13 @@ fn hover_box(ctx: &egui::Context, pos: egui::Pos2, lines: &[String]) {
         });
 }
 
+/// The favour one offered ware gives its god (Juno: 5 breads, 20 points), raised as the
+/// offering's event comes (`ui::holy_window` makes the offering).
+pub const OFFER_FAVOUR: u32 = 4;
+
+/// The favour at which Concordia makes the chapter's goal one building smaller.
+pub const FAVOUR_EASIER: u32 = 50;
+
 /// How long the pointer rests on the map before the hover's words show (the marker shows at
 /// once; the words at egui's half second came up on every pause of the mouse).
 const HOVER_WORDS_SECS: f32 = 1.2;
@@ -3042,8 +3118,10 @@ pub(crate) fn track_idle(idle: &mut std::collections::HashMap<rr_sim::FigId, u32
 /// campaign's first chapter: full garrisons spent the 52 soldiers of the start at 30 % of the
 /// land, there being no ore for weapons).
 pub(crate) fn newcomer_military(mut values: [u8; 8], mission: Option<&crate::missions::Mission>) -> [u8; 8] {
+    use crate::missions::Objective as O;
     let peace = mission.is_some_and(|m| m.gentle && m.cast.iter().all(|s| *s == crate::missions::Stance::Peaceful));
-    if peace && mission.is_some_and(|m| !matches!(m.objective, crate::missions::Objective::DefeatRival(_))) {
+    // (only where the goal is land: the Sabines' chapter has its war)
+    if peace && mission.is_some_and(|m| matches!(m.objective, O::HoldMapLand(_) | O::HoldLand(_))) {
         values[4] = 0;
         values[5] = 0;
         values[7] = 0;
@@ -3838,6 +3916,10 @@ pub struct SaveMeta {
     /// The human's slot (net round 5, #4: a LAN autosave guessed the lowest free one).
     #[serde(deserialize_with = "lenient")]
     pub player: Option<u8>,
+    #[serde(deserialize_with = "lenient")]
+    pub deeds: u32,
+    #[serde(deserialize_with = "lenient")]
+    pub favour: u32,
 }
 
 /// A save field that doesn't read loses only itself, not the rest (QA round 9, #6: one bad
@@ -5144,6 +5226,8 @@ mod tests {
             goal_done: true,
             level: Some(2),
             player: Some(1),
+            deeds: 0b11,
+            favour: 42,
         };
         let (_, _, _, back) = decode_ui(&encode_ui(&Messages::new(), 0, 0, &meta)).unwrap();
         assert_eq!(back, meta);
