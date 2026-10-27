@@ -1,0 +1,4 @@
+# Windows: the C runtime built into the programs, so they start without Microsoft's
+# Visual C++ redistributable ("vcruntime140.dll nicht gefunden" on a player's PC)
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
