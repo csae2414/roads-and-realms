@@ -1,0 +1,16 @@
+[package]
+name = "rr-formats"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rr-core.workspace = true
+postcard.workspace = true
+
+[dev-dependencies]
+rr-world.workspace = true
+postcard.workspace = true
+
+[lints]
+workspace = true

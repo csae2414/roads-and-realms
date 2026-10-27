@@ -1,0 +1,15 @@
+[package]
+name = "rr-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+postcard.workspace = true
+serde.workspace = true
+rr-rules.workspace = true
+rr-world.workspace = true
+rr-core.workspace = true
+
+[lints]
+workspace = true

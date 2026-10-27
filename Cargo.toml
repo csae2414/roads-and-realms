@@ -1,0 +1,42 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+repository = "local"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["use-std"] }
+rr-core = { path = "crates/rr-core" }
+rr-formats = { path = "crates/rr-formats" }
+rr-world = { path = "crates/rr-world" }
+rr-rules = { path = "crates/rr-rules" }
+rr-sim = { path = "crates/rr-sim" }
+rr-mapgen = { path = "crates/rr-mapgen" }
+rr-ai = { path = "crates/rr-ai" }
+rr-audio = { path = "crates/rr-audio" }
+rr-net = { path = "crates/rr-net" }
+rr-game = { path = "crates/rr-game" }
+
+[profile.release]
+# counters in the simulation (stock, incoming, ...) must never wrap silently
+overflow-checks = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[workspace.lints.clippy]
+# functions over 150 lines (clippy.toml) fail the check; the old ones are allowed one by one
+too_many_lines = "warn"
+needless_range_loop = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+manual_is_multiple_of = "allow"
+collapsible_if = "allow"

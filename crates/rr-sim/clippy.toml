@@ -1,0 +1,15 @@
+# The simulation must be deterministic on every platform (docs/ARCHITECTURE.md §7):
+# no hash-ordered containers, no floating point.
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "iteration order is random: use BTreeMap" },
+    { path = "std::collections::HashSet", reason = "iteration order is random: use BTreeSet" },
+]
+disallowed-methods = [
+    { path = "f32::sqrt", reason = "floats differ between platforms" },
+    { path = "f64::sqrt", reason = "floats differ between platforms" },
+    { path = "f32::cos", reason = "floats differ between platforms" },
+    { path = "f64::cos", reason = "floats differ between platforms" },
+]
+
+# (as the workspace: see the root clippy.toml)
+too-many-lines-threshold = 150

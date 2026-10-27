@@ -1,0 +1,1794 @@
+{
+ "armory": {
+  "ax": 56.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "codex",
+  "w": 112
+ },
+ "armory_n1": {
+  "ax": 56.0,
+  "ay": 110.08,
+  "h": 128,
+  "source": "prerender",
+  "w": 112
+ },
+ "armory_n1_w": {
+  "ax": 56.0,
+  "ay": 110.08,
+  "h": 128,
+  "source": "prerender",
+  "w": 112
+ },
+ "armory_n2": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "armory_n2_w": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "armory_n3": {
+  "ax": 56.0,
+  "ay": 73.96,
+  "h": 86,
+  "source": "prerender",
+  "w": 112
+ },
+ "armory_n3_w": {
+  "ax": 56.0,
+  "ay": 73.96,
+  "h": 86,
+  "source": "prerender",
+  "w": 112
+ },
+ "armory_w": {
+  "ax": 56.0,
+  "ay": 76.53999999999999,
+  "h": 89,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery": {
+  "ax": 56.0,
+  "ay": 82.56,
+  "h": 96,
+  "source": "codex",
+  "w": 112
+ },
+ "bakery_n1": {
+  "ax": 56.0,
+  "ay": 110.08,
+  "h": 128,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery_n1_w": {
+  "ax": 56.0,
+  "ay": 110.08,
+  "h": 128,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery_n2": {
+  "ax": 56.0,
+  "ay": 82.56,
+  "h": 96,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery_n2_w": {
+  "ax": 56.0,
+  "ay": 82.56,
+  "h": 96,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery_n3": {
+  "ax": 56.0,
+  "ay": 73.1,
+  "h": 85,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery_n3_w": {
+  "ax": 56.0,
+  "ay": 73.1,
+  "h": 85,
+  "source": "prerender",
+  "w": 112
+ },
+ "bakery_w": {
+  "ax": 56.0,
+  "ay": 75.68,
+  "h": 88,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks": {
+  "ax": 42.0,
+  "ay": 52.46,
+  "h": 61,
+  "source": "codex",
+  "w": 84
+ },
+ "barracks_n1": {
+  "ax": 56.0,
+  "ay": 102.34,
+  "h": 119,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks_n1_w": {
+  "ax": 56.0,
+  "ay": 102.34,
+  "h": 119,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks_n2": {
+  "ax": 56.0,
+  "ay": 79.12,
+  "h": 92,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks_n2_w": {
+  "ax": 56.0,
+  "ay": 79.12,
+  "h": 92,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks_n3": {
+  "ax": 56.0,
+  "ay": 70.52,
+  "h": 82,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks_n3_w": {
+  "ax": 56.0,
+  "ay": 70.52,
+  "h": 82,
+  "source": "prerender",
+  "w": 112
+ },
+ "barracks_w": {
+  "ax": 56.0,
+  "ay": 72.24,
+  "h": 84,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery": {
+  "ax": 56.0,
+  "ay": 85.14,
+  "h": 99,
+  "source": "codex",
+  "w": 112
+ },
+ "brewery_n1": {
+  "ax": 56.0,
+  "ay": 110.94,
+  "h": 129,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery_n1_w": {
+  "ax": 56.0,
+  "ay": 110.94,
+  "h": 129,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery_n2": {
+  "ax": 56.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery_n2_w": {
+  "ax": 56.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery_n3": {
+  "ax": 56.0,
+  "ay": 73.96,
+  "h": 86,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery_n3_w": {
+  "ax": 56.0,
+  "ay": 73.96,
+  "h": 86,
+  "source": "prerender",
+  "w": 112
+ },
+ "brewery_w": {
+  "ax": 56.0,
+  "ay": 77.4,
+  "h": 90,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult": {
+  "ax": 56.0,
+  "ay": 69.66,
+  "h": 81,
+  "source": "codex",
+  "w": 112
+ },
+ "catapult_n1": {
+  "ax": 56.0,
+  "ay": 97.17999999999999,
+  "h": 113,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult_n1_w": {
+  "ax": 56.0,
+  "ay": 97.17999999999999,
+  "h": 113,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult_n2": {
+  "ax": 56.0,
+  "ay": 82.56,
+  "h": 96,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult_n2_w": {
+  "ax": 56.0,
+  "ay": 82.56,
+  "h": 96,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult_n3": {
+  "ax": 56.0,
+  "ay": 67.08,
+  "h": 78,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult_n3_w": {
+  "ax": 56.0,
+  "ay": 67.08,
+  "h": 78,
+  "source": "prerender",
+  "w": 112
+ },
+ "catapult_w": {
+  "ax": 56.0,
+  "ay": 70.52,
+  "h": 82,
+  "source": "prerender",
+  "w": 112
+ },
+ "coalmine": {
+  "ax": 42.0,
+  "ay": 56.76,
+  "h": 66,
+  "source": "codex",
+  "w": 84
+ },
+ "coalmine_n1": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "coalmine_n1_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "coalmine_n2": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "coalmine_n2_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "coalmine_n3": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "coalmine_n3_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "coalmine_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "donkeybreeder": {
+  "ax": 78.0,
+  "ay": 75.68,
+  "h": 88,
+  "source": "codex",
+  "w": 156
+ },
+ "donkeybreeder_n1": {
+  "ax": 78.0,
+  "ay": 143.62,
+  "h": 167,
+  "source": "prerender",
+  "w": 156
+ },
+ "donkeybreeder_n1_w": {
+  "ax": 78.0,
+  "ay": 143.62,
+  "h": 167,
+  "source": "prerender",
+  "w": 156
+ },
+ "donkeybreeder_n2": {
+  "ax": 78.0,
+  "ay": 107.5,
+  "h": 125,
+  "source": "prerender",
+  "w": 156
+ },
+ "donkeybreeder_n2_w": {
+  "ax": 78.0,
+  "ay": 107.5,
+  "h": 125,
+  "source": "prerender",
+  "w": 156
+ },
+ "donkeybreeder_n3": {
+  "ax": 78.0,
+  "ay": 99.75999999999999,
+  "h": 116,
+  "source": "prerender",
+  "w": 156
+ },
+ "donkeybreeder_n3_w": {
+  "ax": 78.0,
+  "ay": 99.75999999999999,
+  "h": 116,
+  "source": "prerender",
+  "w": 156
+ },
+ "donkeybreeder_w": {
+  "ax": 78.0,
+  "ay": 101.47999999999999,
+  "h": 118,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm": {
+  "ax": 78.0,
+  "ay": 70.52,
+  "h": 82,
+  "source": "codex",
+  "w": 156
+ },
+ "farm_n1": {
+  "ax": 78.0,
+  "ay": 147.06,
+  "h": 171,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm_n1_w": {
+  "ax": 78.0,
+  "ay": 147.06,
+  "h": 171,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm_n2": {
+  "ax": 78.0,
+  "ay": 105.78,
+  "h": 123,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm_n2_w": {
+  "ax": 78.0,
+  "ay": 105.78,
+  "h": 123,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm_n3": {
+  "ax": 78.0,
+  "ay": 104.92,
+  "h": 122,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm_n3_w": {
+  "ax": 78.0,
+  "ay": 104.92,
+  "h": 122,
+  "source": "prerender",
+  "w": 156
+ },
+ "farm_w": {
+  "ax": 78.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 156
+ },
+ "fishery": {
+  "ax": 42.0,
+  "ay": 66.22,
+  "h": 77,
+  "source": "codex",
+  "w": 84
+ },
+ "fishery_n1": {
+  "ax": 42.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 84
+ },
+ "fishery_n1_w": {
+  "ax": 42.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 84
+ },
+ "fishery_n2": {
+  "ax": 42.0,
+  "ay": 81.7,
+  "h": 95,
+  "source": "prerender",
+  "w": 84
+ },
+ "fishery_n2_w": {
+  "ax": 42.0,
+  "ay": 81.7,
+  "h": 95,
+  "source": "prerender",
+  "w": 84
+ },
+ "fishery_n3": {
+  "ax": 42.0,
+  "ay": 67.08,
+  "h": 78,
+  "source": "prerender",
+  "w": 84
+ },
+ "fishery_n3_w": {
+  "ax": 42.0,
+  "ay": 67.08,
+  "h": 78,
+  "source": "prerender",
+  "w": 84
+ },
+ "fishery_w": {
+  "ax": 42.0,
+  "ay": 73.1,
+  "h": 85,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester": {
+  "ax": 42.0,
+  "ay": 56.76,
+  "h": 66,
+  "source": "codex",
+  "w": 84
+ },
+ "forester_n1": {
+  "ax": 42.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester_n1_w": {
+  "ax": 42.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester_n2": {
+  "ax": 42.0,
+  "ay": 67.94,
+  "h": 79,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester_n2_w": {
+  "ax": 42.0,
+  "ay": 67.94,
+  "h": 79,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester_n3": {
+  "ax": 42.0,
+  "ay": 64.5,
+  "h": 75,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester_n3_w": {
+  "ax": 42.0,
+  "ay": 64.5,
+  "h": 75,
+  "source": "prerender",
+  "w": 84
+ },
+ "forester_w": {
+  "ax": 42.0,
+  "ay": 64.5,
+  "h": 75,
+  "source": "prerender",
+  "w": 84
+ },
+ "fortress": {
+  "ax": 78.0,
+  "ay": 102.34,
+  "h": 119,
+  "source": "codex",
+  "w": 156
+ },
+ "fortress_n1": {
+  "ax": 78.0,
+  "ay": 147.92,
+  "h": 172,
+  "source": "prerender",
+  "w": 156
+ },
+ "fortress_n1_w": {
+  "ax": 78.0,
+  "ay": 147.92,
+  "h": 172,
+  "source": "prerender",
+  "w": 156
+ },
+ "fortress_n2": {
+  "ax": 78.0,
+  "ay": 128.14,
+  "h": 149,
+  "source": "prerender",
+  "w": 156
+ },
+ "fortress_n2_w": {
+  "ax": 78.0,
+  "ay": 128.14,
+  "h": 149,
+  "source": "prerender",
+  "w": 156
+ },
+ "fortress_n3": {
+  "ax": 78.0,
+  "ay": 123.84,
+  "h": 144,
+  "source": "prerender",
+  "w": 156
+ },
+ "fortress_n3_w": {
+  "ax": 78.0,
+  "ay": 123.84,
+  "h": 144,
+  "source": "prerender",
+  "w": 156
+ },
+ "fortress_w": {
+  "ax": 78.0,
+  "ay": 124.7,
+  "h": 145,
+  "source": "prerender",
+  "w": 156
+ },
+ "goldmine": {
+  "ax": 42.0,
+  "ay": 55.04,
+  "h": 64,
+  "source": "codex",
+  "w": 84
+ },
+ "goldmine_n1": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "goldmine_n1_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "goldmine_n2": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "goldmine_n2_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "goldmine_n3": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "goldmine_n3_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "goldmine_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine": {
+  "ax": 42.0,
+  "ay": 52.46,
+  "h": 61,
+  "source": "codex",
+  "w": 84
+ },
+ "granitemine_n1": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine_n1_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine_n2": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine_n2_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine_n3": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine_n3_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "granitemine_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse": {
+  "ax": 42.0,
+  "ay": 96.32,
+  "h": 112,
+  "source": "codex",
+  "w": 84
+ },
+ "guardhouse_n1": {
+  "ax": 42.0,
+  "ay": 119.53999999999999,
+  "h": 139,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse_n1_w": {
+  "ax": 42.0,
+  "ay": 119.53999999999999,
+  "h": 139,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse_n2": {
+  "ax": 42.0,
+  "ay": 88.58,
+  "h": 103,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse_n2_w": {
+  "ax": 42.0,
+  "ay": 88.58,
+  "h": 103,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse_n3": {
+  "ax": 42.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse_n3_w": {
+  "ax": 42.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "prerender",
+  "w": 84
+ },
+ "guardhouse_w": {
+  "ax": 42.0,
+  "ay": 96.32,
+  "h": 112,
+  "source": "prerender",
+  "w": 84
+ },
+ "harbor": {
+  "ax": 78.0,
+  "ay": 86.86,
+  "h": 101,
+  "source": "codex",
+  "w": 156
+ },
+ "harbor_n1": {
+  "ax": 78.0,
+  "ay": 157.38,
+  "h": 183,
+  "source": "prerender",
+  "w": 156
+ },
+ "harbor_n1_w": {
+  "ax": 78.0,
+  "ay": 157.38,
+  "h": 183,
+  "source": "prerender",
+  "w": 156
+ },
+ "harbor_n2": {
+  "ax": 78.0,
+  "ay": 125.56,
+  "h": 146,
+  "source": "prerender",
+  "w": 156
+ },
+ "harbor_n2_w": {
+  "ax": 78.0,
+  "ay": 125.56,
+  "h": 146,
+  "source": "prerender",
+  "w": 156
+ },
+ "harbor_n3": {
+  "ax": 78.0,
+  "ay": 112.66,
+  "h": 131,
+  "source": "prerender",
+  "w": 156
+ },
+ "harbor_n3_w": {
+  "ax": 78.0,
+  "ay": 112.66,
+  "h": 131,
+  "source": "prerender",
+  "w": 156
+ },
+ "harbor_w": {
+  "ax": 78.0,
+  "ay": 116.1,
+  "h": 135,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters": {
+  "ax": 78.0,
+  "ay": 104.92,
+  "h": 122,
+  "source": "agy",
+  "w": 156
+ },
+ "headquarters_n1": {
+  "ax": 78.0,
+  "ay": 141.04,
+  "h": 164,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters_n1_w": {
+  "ax": 78.0,
+  "ay": 141.04,
+  "h": 164,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters_n2": {
+  "ax": 78.0,
+  "ay": 124.7,
+  "h": 145,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters_n2_w": {
+  "ax": 78.0,
+  "ay": 124.7,
+  "h": 145,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters_n3": {
+  "ax": 78.0,
+  "ay": 122.12,
+  "h": 142,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters_n3_w": {
+  "ax": 78.0,
+  "ay": 122.12,
+  "h": 142,
+  "source": "prerender",
+  "w": 156
+ },
+ "headquarters_w": {
+  "ax": 78.0,
+  "ay": 128.14,
+  "h": 149,
+  "source": "prerender",
+  "w": 156
+ },
+ "hunter": {
+  "ax": 42.0,
+  "ay": 62.78,
+  "h": 73,
+  "source": "codex",
+  "w": 84
+ },
+ "hunter_n1": {
+  "ax": 42.0,
+  "ay": 99.75999999999999,
+  "h": 116,
+  "source": "prerender",
+  "w": 84
+ },
+ "hunter_n1_w": {
+  "ax": 42.0,
+  "ay": 99.75999999999999,
+  "h": 116,
+  "source": "prerender",
+  "w": 84
+ },
+ "hunter_n2": {
+  "ax": 42.0,
+  "ay": 75.68,
+  "h": 88,
+  "source": "prerender",
+  "w": 84
+ },
+ "hunter_n2_w": {
+  "ax": 42.0,
+  "ay": 75.68,
+  "h": 88,
+  "source": "prerender",
+  "w": 84
+ },
+ "hunter_n3": {
+  "ax": 42.0,
+  "ay": 63.64,
+  "h": 74,
+  "source": "prerender",
+  "w": 84
+ },
+ "hunter_n3_w": {
+  "ax": 42.0,
+  "ay": 63.64,
+  "h": 74,
+  "source": "prerender",
+  "w": 84
+ },
+ "hunter_w": {
+  "ax": 42.0,
+  "ay": 68.8,
+  "h": 80,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine": {
+  "ax": 42.0,
+  "ay": 53.32,
+  "h": 62,
+  "source": "codex",
+  "w": 84
+ },
+ "ironmine_n1": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine_n1_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine_n2": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine_n2_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine_n3": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine_n3_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironmine_w": {
+  "ax": 42.0,
+  "ay": 46.44,
+  "h": 54,
+  "source": "prerender",
+  "w": 84
+ },
+ "ironsmelter": {
+  "ax": 56.0,
+  "ay": 89.44,
+  "h": 104,
+  "source": "codex",
+  "w": 112
+ },
+ "ironsmelter_n1": {
+  "ax": 56.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 112
+ },
+ "ironsmelter_n1_w": {
+  "ax": 56.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 112
+ },
+ "ironsmelter_n2": {
+  "ax": 56.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "prerender",
+  "w": 112
+ },
+ "ironsmelter_n2_w": {
+  "ax": 56.0,
+  "ay": 93.74,
+  "h": 109,
+  "source": "prerender",
+  "w": 112
+ },
+ "ironsmelter_n3": {
+  "ax": 56.0,
+  "ay": 74.82,
+  "h": 87,
+  "source": "prerender",
+  "w": 112
+ },
+ "ironsmelter_n3_w": {
+  "ax": 56.0,
+  "ay": 74.82,
+  "h": 87,
+  "source": "prerender",
+  "w": 112
+ },
+ "ironsmelter_w": {
+  "ax": 56.0,
+  "ay": 86.86,
+  "h": 101,
+  "source": "prerender",
+  "w": 112
+ },
+ "lookouttower": {
+  "ax": 42.0,
+  "ay": 172.85999999999999,
+  "h": 201,
+  "source": "codex",
+  "w": 84
+ },
+ "lookouttower_n1": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "lookouttower_n1_w": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "lookouttower_n2": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "lookouttower_n2_w": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "lookouttower_n3": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "lookouttower_n3_w": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "lookouttower_w": {
+  "ax": 42.0,
+  "ay": 175.44,
+  "h": 204,
+  "source": "prerender",
+  "w": 84
+ },
+ "metalworks": {
+  "ax": 56.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "codex",
+  "w": 112
+ },
+ "metalworks_n1": {
+  "ax": 56.0,
+  "ay": 121.25999999999999,
+  "h": 141,
+  "source": "prerender",
+  "w": 112
+ },
+ "metalworks_n1_w": {
+  "ax": 56.0,
+  "ay": 121.25999999999999,
+  "h": 141,
+  "source": "prerender",
+  "w": 112
+ },
+ "metalworks_n2": {
+  "ax": 56.0,
+  "ay": 92.88,
+  "h": 108,
+  "source": "prerender",
+  "w": 112
+ },
+ "metalworks_n2_w": {
+  "ax": 56.0,
+  "ay": 92.88,
+  "h": 108,
+  "source": "prerender",
+  "w": 112
+ },
+ "metalworks_n3": {
+  "ax": 56.0,
+  "ay": 80.84,
+  "h": 94,
+  "source": "prerender",
+  "w": 112
+ },
+ "metalworks_n3_w": {
+  "ax": 56.0,
+  "ay": 80.84,
+  "h": 94,
+  "source": "prerender",
+  "w": 112
+ },
+ "metalworks_w": {
+  "ax": 56.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill": {
+  "ax": 56.0,
+  "ay": 145.34,
+  "h": 169,
+  "source": "codex",
+  "w": 112
+ },
+ "mill_n1": {
+  "ax": 56.0,
+  "ay": 137.6,
+  "h": 160,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill_n1_w": {
+  "ax": 56.0,
+  "ay": 137.6,
+  "h": 160,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill_n2": {
+  "ax": 56.0,
+  "ay": 115.24,
+  "h": 134,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill_n2_w": {
+  "ax": 56.0,
+  "ay": 115.24,
+  "h": 134,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill_n3": {
+  "ax": 56.0,
+  "ay": 96.32,
+  "h": 112,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill_n3_w": {
+  "ax": 56.0,
+  "ay": 96.32,
+  "h": 112,
+  "source": "prerender",
+  "w": 112
+ },
+ "mill_w": {
+  "ax": 56.0,
+  "ay": 113.52,
+  "h": 132,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint": {
+  "ax": 56.0,
+  "ay": 79.12,
+  "h": 92,
+  "source": "codex",
+  "w": 112
+ },
+ "mint_n1": {
+  "ax": 56.0,
+  "ay": 116.1,
+  "h": 135,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint_n1_w": {
+  "ax": 56.0,
+  "ay": 116.1,
+  "h": 135,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint_n2": {
+  "ax": 56.0,
+  "ay": 87.72,
+  "h": 102,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint_n2_w": {
+  "ax": 56.0,
+  "ay": 87.72,
+  "h": 102,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint_n3": {
+  "ax": 56.0,
+  "ay": 78.25999999999999,
+  "h": 91,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint_n3_w": {
+  "ax": 56.0,
+  "ay": 78.25999999999999,
+  "h": 91,
+  "source": "prerender",
+  "w": 112
+ },
+ "mint_w": {
+  "ax": 56.0,
+  "ay": 79.98,
+  "h": 93,
+  "source": "prerender",
+  "w": 112
+ },
+ "pigfarm": {
+  "ax": 78.0,
+  "ay": 74.82,
+  "h": 87,
+  "source": "codex",
+  "w": 156
+ },
+ "pigfarm_n1": {
+  "ax": 78.0,
+  "ay": 147.92,
+  "h": 172,
+  "source": "prerender",
+  "w": 156
+ },
+ "pigfarm_n1_w": {
+  "ax": 78.0,
+  "ay": 147.92,
+  "h": 172,
+  "source": "prerender",
+  "w": 156
+ },
+ "pigfarm_n2": {
+  "ax": 78.0,
+  "ay": 111.8,
+  "h": 130,
+  "source": "prerender",
+  "w": 156
+ },
+ "pigfarm_n2_w": {
+  "ax": 78.0,
+  "ay": 111.8,
+  "h": 130,
+  "source": "prerender",
+  "w": 156
+ },
+ "pigfarm_n3": {
+  "ax": 78.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 156
+ },
+ "pigfarm_n3_w": {
+  "ax": 78.0,
+  "ay": 104.06,
+  "h": 121,
+  "source": "prerender",
+  "w": 156
+ },
+ "pigfarm_w": {
+  "ax": 78.0,
+  "ay": 106.64,
+  "h": 124,
+  "source": "prerender",
+  "w": 156
+ },
+ "quarry": {
+  "ax": 42.0,
+  "ay": 55.9,
+  "h": 65,
+  "source": "codex",
+  "w": 84
+ },
+ "quarry_n1": {
+  "ax": 42.0,
+  "ay": 95.46,
+  "h": 111,
+  "source": "prerender",
+  "w": 84
+ },
+ "quarry_n1_w": {
+  "ax": 42.0,
+  "ay": 95.46,
+  "h": 111,
+  "source": "prerender",
+  "w": 84
+ },
+ "quarry_n2": {
+  "ax": 42.0,
+  "ay": 73.1,
+  "h": 85,
+  "source": "prerender",
+  "w": 84
+ },
+ "quarry_n2_w": {
+  "ax": 42.0,
+  "ay": 73.1,
+  "h": 85,
+  "source": "prerender",
+  "w": 84
+ },
+ "quarry_n3": {
+  "ax": 42.0,
+  "ay": 67.94,
+  "h": 79,
+  "source": "prerender",
+  "w": 84
+ },
+ "quarry_n3_w": {
+  "ax": 42.0,
+  "ay": 67.94,
+  "h": 79,
+  "source": "prerender",
+  "w": 84
+ },
+ "quarry_w": {
+  "ax": 42.0,
+  "ay": 67.94,
+  "h": 79,
+  "source": "prerender",
+  "w": 84
+ },
+ "sawmill": {
+  "ax": 56.0,
+  "ay": 67.08,
+  "h": 78,
+  "source": "codex",
+  "w": 112
+ },
+ "sawmill_n1": {
+  "ax": 56.0,
+  "ay": 116.96,
+  "h": 136,
+  "source": "prerender",
+  "w": 112
+ },
+ "sawmill_n1_w": {
+  "ax": 56.0,
+  "ay": 116.96,
+  "h": 136,
+  "source": "prerender",
+  "w": 112
+ },
+ "sawmill_n2": {
+  "ax": 56.0,
+  "ay": 91.16,
+  "h": 106,
+  "source": "prerender",
+  "w": 112
+ },
+ "sawmill_n2_w": {
+  "ax": 56.0,
+  "ay": 91.16,
+  "h": 106,
+  "source": "prerender",
+  "w": 112
+ },
+ "sawmill_n3": {
+  "ax": 56.0,
+  "ay": 79.98,
+  "h": 93,
+  "source": "prerender",
+  "w": 112
+ },
+ "sawmill_n3_w": {
+  "ax": 56.0,
+  "ay": 79.98,
+  "h": 93,
+  "source": "prerender",
+  "w": 112
+ },
+ "sawmill_w": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard": {
+  "ax": 56.0,
+  "ay": 61.92,
+  "h": 72,
+  "source": "codex",
+  "w": 112
+ },
+ "shipyard_n1": {
+  "ax": 56.0,
+  "ay": 110.08,
+  "h": 128,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard_n1_w": {
+  "ax": 56.0,
+  "ay": 110.08,
+  "h": 128,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard_n2": {
+  "ax": 56.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard_n2_w": {
+  "ax": 56.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard_n3": {
+  "ax": 56.0,
+  "ay": 79.12,
+  "h": 92,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard_n3_w": {
+  "ax": 56.0,
+  "ay": 79.12,
+  "h": 92,
+  "source": "prerender",
+  "w": 112
+ },
+ "shipyard_w": {
+  "ax": 56.0,
+  "ay": 79.12,
+  "h": 92,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse": {
+  "ax": 56.0,
+  "ay": 88.58,
+  "h": 103,
+  "source": "codex",
+  "w": 112
+ },
+ "slaughterhouse_n1": {
+  "ax": 56.0,
+  "ay": 124.7,
+  "h": 145,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse_n1_w": {
+  "ax": 56.0,
+  "ay": 124.7,
+  "h": 145,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse_n2": {
+  "ax": 56.0,
+  "ay": 96.32,
+  "h": 112,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse_n2_w": {
+  "ax": 56.0,
+  "ay": 96.32,
+  "h": 112,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse_n3": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse_n3_w": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "slaughterhouse_w": {
+  "ax": 56.0,
+  "ay": 87.72,
+  "h": 102,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse": {
+  "ax": 56.0,
+  "ay": 65.36,
+  "h": 76,
+  "source": "codex",
+  "w": 112
+ },
+ "storehouse_n1": {
+  "ax": 56.0,
+  "ay": 107.5,
+  "h": 125,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse_n1_w": {
+  "ax": 56.0,
+  "ay": 107.5,
+  "h": 125,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse_n2": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse_n2_w": {
+  "ax": 56.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse_n3": {
+  "ax": 56.0,
+  "ay": 74.82,
+  "h": 87,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse_n3_w": {
+  "ax": 56.0,
+  "ay": 74.82,
+  "h": 87,
+  "source": "prerender",
+  "w": 112
+ },
+ "storehouse_w": {
+  "ax": 56.0,
+  "ay": 76.53999999999999,
+  "h": 89,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower": {
+  "ax": 56.0,
+  "ay": 146.2,
+  "h": 170,
+  "source": "codex",
+  "w": 112
+ },
+ "watchtower_n1": {
+  "ax": 56.0,
+  "ay": 135.02,
+  "h": 157,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower_n1_w": {
+  "ax": 56.0,
+  "ay": 135.02,
+  "h": 157,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower_n2": {
+  "ax": 56.0,
+  "ay": 110.94,
+  "h": 129,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower_n2_w": {
+  "ax": 56.0,
+  "ay": 110.94,
+  "h": 129,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower_n3": {
+  "ax": 56.0,
+  "ay": 117.82,
+  "h": 137,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower_n3_w": {
+  "ax": 56.0,
+  "ay": 117.82,
+  "h": 137,
+  "source": "prerender",
+  "w": 112
+ },
+ "watchtower_w": {
+  "ax": 56.0,
+  "ay": 116.96,
+  "h": 136,
+  "source": "prerender",
+  "w": 112
+ },
+ "well": {
+  "ax": 42.0,
+  "ay": 83.42,
+  "h": 97,
+  "source": "codex",
+  "w": 84
+ },
+ "well_n1": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "well_n1_w": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "well_n2": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "well_n2_w": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "well_n3": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "well_n3_w": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "well_w": {
+  "ax": 42.0,
+  "ay": 92.02,
+  "h": 107,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter": {
+  "ax": 42.0,
+  "ay": 60.2,
+  "h": 70,
+  "source": "agy",
+  "w": 84
+ },
+ "woodcutter_n1": {
+  "ax": 42.0,
+  "ay": 95.46,
+  "h": 111,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter_n1_w": {
+  "ax": 42.0,
+  "ay": 95.46,
+  "h": 111,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter_n2": {
+  "ax": 42.0,
+  "ay": 69.66,
+  "h": 81,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter_n2_w": {
+  "ax": 42.0,
+  "ay": 69.66,
+  "h": 81,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter_n3": {
+  "ax": 42.0,
+  "ay": 63.64,
+  "h": 74,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter_n3_w": {
+  "ax": 42.0,
+  "ay": 63.64,
+  "h": 74,
+  "source": "prerender",
+  "w": 84
+ },
+ "woodcutter_w": {
+  "ax": 42.0,
+  "ay": 65.36,
+  "h": 76,
+  "source": "prerender",
+  "w": 84
+ }
+}

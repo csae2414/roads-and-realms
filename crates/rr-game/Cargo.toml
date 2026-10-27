@@ -1,0 +1,16 @@
+[package]
+name = "rr-game"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rr-ai.workspace = true
+rr-core.workspace = true
+rr-mapgen.workspace = true
+rr-rules.workspace = true
+rr-sim.workspace = true
+
+[lints]
+workspace = true

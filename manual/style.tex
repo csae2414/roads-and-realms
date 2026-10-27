@@ -1,0 +1,123 @@
+% The manual's look: the game's own colours (wood, parchment, gold), framed screenshots,
+% building cards. Shared by every language's book.
+% (pdfLaTeX and the TeX tree's own fonts: this machine's LuaTeX has no font loader)
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{textcomp}
+\usepackage{tgpagella}
+\usepackage[scale=0.92]{tgheros}
+\providecommand{\rrhead}{\normalfont\rmfamily}
+\providecommand{\rrtitle}{\normalfont\rmfamily}
+\DeclareUnicodeCharacter{2212}{\textminus}
+\DeclareUnicodeCharacter{00D7}{\texttimes}
+\DeclareUnicodeCharacter{2716}{$\times$}
+\DeclareUnicodeCharacter{2192}{$\rightarrow$}
+\DeclareUnicodeCharacter{2606}{$\star$}
+\DeclareUnicodeCharacter{2693}{\textsf{Anker}}
+\DeclareUnicodeCharacter{2605}{$\bigstar$}
+\usepackage{csquotes}
+
+\usepackage{xcolor}
+\definecolor{paper}{HTML}{FBF6EA}
+\definecolor{paperdark}{HTML}{F1E6CF}
+\definecolor{wood}{HTML}{40301E}
+\definecolor{woodmid}{HTML}{6B4A2A}
+\definecolor{gold}{HTML}{B8862F}
+\definecolor{goldlight}{HTML}{E9C77E}
+\definecolor{ink}{HTML}{2A2118}
+\definecolor{leaf}{HTML}{4F7A34}
+\pagecolor{paper}
+\color{ink}
+
+\usepackage{graphicx}
+\usepackage{array,booktabs,tabularx}
+\usepackage{enumitem}
+\setlist{itemsep=2pt,topsep=4pt}
+\setlist[itemize]{label={\color{gold}\small$\blacktriangleright$}}
+\usepackage{amssymb}
+\usepackage{microtype}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shadows.blur,calc,arrows.meta,fit,backgrounds,fadings,chains}
+\tikzset{bld/.style={draw=wood, fill=paperdark, rounded corners=2pt, inner sep=3pt, font=\sffamily\small},
+  ware/.style={fill=goldlight!70, rounded corners=7pt, inner sep=3pt, font=\sffamily\small},
+  s/.style={fill=wood, text=goldlight, rounded corners=2pt, inner sep=3pt, font=\sffamily\small\bfseries},
+  b/.style={bld, text height=1.6ex, text depth=0.45ex}, w/.style={ware, text height=1.6ex, text depth=0.45ex},
+  s/.append style={text height=1.6ex, text depth=0.45ex}}
+% \chain{b/Förster, w/Bäume, ...}: buildings and wares in a row, joined by arrows
+\newcommand{\chain}[1]{\tikz[baseline=(c-1.base), start chain=c going right, node distance=4.5mm,
+  every join/.style={-{Stealth[length=4pt]}, woodmid, line width=0.7pt}]{%
+  \foreach \t/\n [count=\i] in {#1}{\ifnum\i=1 \node[\t, on chain]{\n};\else\node[\t, on chain, join]{\n};\fi}}}
+\usepackage[most]{tcolorbox}
+\usepackage{needspace}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdfauthor={Roads \& Realms}}
+
+% headings in the title's serif and the windows' gold-brown
+\setkomafont{disposition}{\rrhead\color{wood}}
+\setkomafont{chapter}{\Huge}
+\setkomafont{section}{\LARGE}
+\setkomafont{subsection}{\Large}
+\setkomafont{chapterentry}{\rrhead\color{wood}}
+\renewcommand*{\chapterformat}{%
+  \textcolor{gold}{\fontsize{44}{44}\selectfont\thechapter}\hspace{0.5em}}
+\renewcommand*{\chapterlinesformat}[3]{%
+  \parbox[b]{\linewidth}{#2#3\par\vspace{2pt}{\color{gold}\rule{\linewidth}{1.2pt}}}}
+\RedeclareSectionCommand[beforeskip=-1.6\baselineskip,afterskip=0.6\baselineskip]{section}
+% a heading never stands alone at the foot of a page, above a picture that moved on
+\AddToHook{cmd/section/before}{\needspace{16\baselineskip}}
+
+\usepackage[headsepline=0.4pt:,footsepline=0pt]{scrlayer-scrpage}
+\pagestyle{scrheadings}
+\automark[chapter]{chapter}
+\clearpairofpagestyles
+\ihead{\sffamily\footnotesize\color{woodmid}Roads \& Realms}
+\ohead{\sffamily\footnotesize\color{woodmid}\leftmark}
+\cfoot{\sffamily\small\color{woodmid}\pagemark}
+\renewcommand*{\chaptermarkformat}{}
+\addtokomafont{headsepline}{\color{goldlight}}
+
+\setlength{\parskip}{0.45\baselineskip}
+\setlength{\parindent}{0pt}
+
+% ---------------------------------------------------------------- screenshots
+% \shot[width]{file}: a screenshot with rounded corners, a wooden frame and a soft shadow
+\newcommand{\shot}[2][\linewidth]{%
+  \begin{tikzpicture}
+    \node[inner sep=0pt, blur shadow={shadow blur steps=6, shadow xshift=1.2pt, shadow yshift=-1.6pt}]
+      (i) {\includegraphics[width=#1]{#2}};
+    \draw[wood, line width=1.6pt, rounded corners=3pt] (i.south west) rectangle (i.north east);
+  \end{tikzpicture}}
+% \screen{file}{caption}: a full-width screenshot with its caption below
+\newcommand{\screen}[2]{%
+  \par\needspace{\dimexpr0.54\linewidth+3\baselineskip}\begin{center}\shot[0.86\linewidth]{#1}\par\vspace{3pt}
+  {\sffamily\small\color{woodmid}#2}\end{center}}
+% \window{file}{width}{text}: a window cut out of the screen, beside its description
+\newcommand{\window}[3]{%
+  \par\noindent
+  \begin{minipage}[t]{#2}\vspace{0pt}\shot{#1}\end{minipage}\hfill
+  \begin{minipage}[t]{\dimexpr\linewidth-#2-1.2em}\vspace{0pt}#3\end{minipage}\par\medskip}
+
+% ---------------------------------------------------------------- boxes
+\newtcolorbox{tipbox}[1][Tipp]{enhanced, breakable, colback=paperdark, colframe=gold, boxrule=0pt,
+  leftrule=3pt, arc=2pt, left=8pt, right=8pt, top=4pt, bottom=4pt,
+  fonttitle=\sffamily\bfseries\small, coltitle=woodmid, title={#1}, attach title to upper={\quad},
+  before skip=8pt, after skip=8pt}
+\newtcolorbox{storybox}{enhanced, breakable, colback=wood, colupper=goldlight, boxrule=0pt, arc=3pt,
+  left=10pt, right=10pt, top=7pt, bottom=7pt, fontupper=\itshape\small}
+\newcommand{\key}[1]{\tikz[baseline=(k.base)]\node[draw=woodmid, fill=paperdark, rounded corners=2pt,
+  inner sep=2pt, font=\sffamily\footnotesize, text=wood] (k) {#1};}
+
+% ---------------------------------------------------------------- buildings
+\newcommand{\fact}[2]{{\sffamily\small\color{woodmid}#1} & {\small #2}\\}
+\newcommand{\tip}[1]{\par\smallskip{\sffamily\small\color{gold}\textbf{Tipp:}}~{\small #1}}
+% \building{name}{picture}{facts}{text}{tip}
+\newcommand{\building}[5]{%
+  \begin{tcolorbox}[enhanced, breakable=false, colback=white!60!paper, colframe=wood, arc=3pt,
+    boxrule=0.8pt, title={#1}, fonttitle=\rrhead\large, coltitle=goldlight, colbacktitle=wood,
+    sidebyside, sidebyside align=top seam, lefthand width=3.6cm, sidebyside gap=10pt, segmentation hidden,
+    left=6pt, right=8pt, top=6pt, bottom=6pt, before skip=6pt, after skip=8pt]
+    \centering\includegraphics[width=\linewidth,height=3.4cm,keepaspectratio]{#2}
+    \tcblower
+    \begin{tabular}{@{}l>{\raggedright\arraybackslash}p{\dimexpr\linewidth-2.6cm}@{}}#3\end{tabular}\par
+    \smallskip#4#5
+  \end{tcolorbox}}

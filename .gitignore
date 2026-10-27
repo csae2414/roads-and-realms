@@ -1,0 +1,10 @@
+/target
+/site/out
+*.swp
+/local/
+# never commit original game data
+/orig/
+/art-gen/**/*.png
+/art-gen/**/*.codex.log
+/manual/build/
+__pycache__/

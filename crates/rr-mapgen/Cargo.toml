@@ -1,0 +1,13 @@
+[package]
+name = "rr-mapgen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rr-world.workspace = true
+rr-core.workspace = true
+
+[lints]
+workspace = true

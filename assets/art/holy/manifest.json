@@ -1,0 +1,72 @@
+{
+ "carthage_temple": {
+  "ax": 78.0,
+  "ay": 109.22,
+  "h": 127,
+  "source": "codex",
+  "w": 156
+ },
+ "concordia": {
+  "ax": 42.0,
+  "ay": 102.34,
+  "h": 119,
+  "source": "codex",
+  "w": 84
+ },
+ "cybele": {
+  "ax": 56.0,
+  "ay": 117.82,
+  "h": 137,
+  "source": "codex",
+  "w": 112
+ },
+ "janus_closed": {
+  "ax": 56.0,
+  "ay": 86.86,
+  "h": 101,
+  "source": "codex",
+  "w": 112
+ },
+ "janus_open": {
+  "ax": 56.0,
+  "ay": 86.86,
+  "h": 101,
+  "source": "codex",
+  "w": 112
+ },
+ "juno_capitol": {
+  "ax": 78.0,
+  "ay": 113.52,
+  "h": 132,
+  "source": "codex",
+  "w": 156
+ },
+ "juno_veii": {
+  "ax": 42.0,
+  "ay": 69.66,
+  "h": 81,
+  "source": "codex",
+  "w": 84
+ },
+ "jupiter": {
+  "ax": 56.0,
+  "ay": 86.86,
+  "h": 101,
+  "source": "codex",
+  "w": 112
+ },
+ "mars": {
+  "ax": 78.0,
+  "ay": 84.28,
+  "h": 98,
+  "source": "codex",
+  "w": 156
+ },
+ "neptune": {
+  "ax": 56.0,
+  "ay": 119.53999999999999,
+  "h": 139,
+  "source": "codex",
+  "w": 112
+ }
+}

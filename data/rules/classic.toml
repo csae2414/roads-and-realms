@@ -1,0 +1,146 @@
+# Classic rule set: the original game's values, as RTTR plays them (fight_k is RTTR's default,
+# "medium strength"; see docs/DEPARTURES.md).
+# Sources: RTTR master 566e923 (libs/s25main/gameData/*.h, JobConsts.cpp, nobHQ.cpp).
+# Integers only. Times are in game frames (GF, 50 ms at normal speed).
+
+[military]
+hp = [3, 4, 5, 6, 7]
+fight_k = 10                    # rand(rank + K): RTTR noFighting default ("medium strength"); 6 = "maximum"
+heal_every = 500                # +1 HP per 500 + rand(500) GF
+heal_rand = 500
+promote_wait = 100              # 100 + rand(300) GF per coin
+promote_rand = 300
+attack_radius = 21
+attack_max_walk = 40
+recruit_wait = 200
+recruit_rand = 200
+
+[economy]
+flag_capacity = 8
+helper_spawn = 150              # +1 helper per 150 + rand(20) GF while below max
+helper_spawn_rand = 20
+helper_max = 100
+donkey_busy_percent = 80
+donkey_window = 6000
+woodcutter_radius = 6
+forester_radius = 6
+stonemason_radius = 8
+fisher_radius = 7
+hunter_radius = 19  # RTTR ANIMAL_RADIUS
+farmer_radius = 2
+geologist_radius = 15
+geologist_flags = 15
+
+# ---------------------------------------------------------------- jobs
+# tool, work, wait1, wait2 (JobConsts.cpp)
+[jobs]
+Helper        = { work = 385,  wait1 = 190, wait2 = 5 }
+Woodcutter    = { tool = "Axe",        work = 148,  wait1 = 789, wait2 = 5 }
+Fisher        = { tool = "RodAndLine", work = 129,  wait1 = 825, wait2 = 5 }
+Forester      = { tool = "Shovel",     work = 66,   wait1 = 304, wait2 = 5 }
+Carpenter     = { tool = "Saw",        work = 479,  wait1 = 96,  wait2 = 5 }
+Stonemason    = { tool = "PickAxe",    work = 129,  wait1 = 825, wait2 = 5 }
+Hunter        = { tool = "Bow",        work = 0,    wait1 = 300, wait2 = 5 }
+Farmer        = { tool = "Scythe",     work = 117,  wait1 = 106, wait2 = 5 }
+Miller        = { work = 470,  wait1 = 95,  wait2 = 5 }
+Baker         = { tool = "Rollingpin", work = 470,  wait1 = 94,  wait2 = 5 }
+Butcher       = { tool = "Cleaver",    work = 478,  wait1 = 80,  wait2 = 5 }
+Miner         = { tool = "PickAxe",    work = 583,  wait1 = 558, wait2 = 5 }
+Brewer        = { work = 530,  wait1 = 93,  wait2 = 5 }
+PigBreeder    = { work = 390,  wait1 = 160, wait2 = 5 }
+DonkeyBreeder = { work = 370,  wait1 = 278, wait2 = 205 }
+IronFounder   = { tool = "Crucible",   work = 950,  wait1 = 160, wait2 = 5 }
+Minter        = { tool = "Crucible",   work = 1050, wait1 = 170, wait2 = 5 }
+Metalworker   = { tool = "Tongs",      work = 850,  wait1 = 400, wait2 = 5 }
+Armorer       = { tool = "Hammer",     work = 940,  wait1 = 170, wait2 = 5 }
+Builder       = { tool = "Hammer",     work = 0,    wait1 = 0,   wait2 = 5 }
+Planer        = { tool = "Shovel",     work = 130,  wait1 = 0,   wait2 = 5 }
+Geologist     = { tool = "Hammer",     work = 0,    wait1 = 0,   wait2 = 0 }
+Shipwright    = { tool = "Hammer",     work = 1250, wait1 = 100, wait2 = 5 }
+Scout         = { tool = "Bow",        work = 0,    wait1 = 0,   wait2 = 0 }
+Private           = { work = 0, wait1 = 0, wait2 = 0 }
+PrivateFirstClass = { work = 0, wait1 = 0, wait2 = 0 }
+Sergeant          = { work = 0, wait1 = 0, wait2 = 0 }
+Officer           = { work = 0, wait1 = 0, wait2 = 0 }
+General           = { work = 0, wait1 = 0, wait2 = 0 }
+PackDonkey        = { work = 0, wait1 = 0, wait2 = 0 }
+
+# ---------------------------------------------------------------- buildings
+# size: Hut (small), House (medium), Castle (large), Mine, Harbor
+# military: soldiers, coins (gold slots), radius (territory), sight
+[buildings]
+Headquarters = { size = "Castle", military = { soldiers = 0, coins = 0, radius = 9, sight = 12 } }
+Barracks     = { size = "Hut",    boards = 2, inputs = ["Coins"], slots_per_input = 1, military = { soldiers = 2, coins = 1, radius = 8,  sight = 11 } }
+Guardhouse   = { size = "Hut",    boards = 2, stones = 3, inputs = ["Coins"], slots_per_input = 2, military = { soldiers = 3, coins = 2, radius = 9,  sight = 12 } }
+Watchtower   = { size = "House",  boards = 3, stones = 5, inputs = ["Coins"], slots_per_input = 4, military = { soldiers = 6, coins = 4, radius = 10, sight = 13 } }
+Fortress     = { size = "Castle", boards = 4, stones = 7, inputs = ["Coins"], slots_per_input = 6, military = { soldiers = 9, coins = 6, radius = 11, sight = 14 } }
+LookoutTower = { size = "Hut",    boards = 4, worker = "Scout" }
+Catapult     = { size = "House",  boards = 4, stones = 2, worker = "Helper", inputs = ["Stones"], slots_per_input = 4 }
+GraniteMine  = { size = "Mine",   boards = 4, worker = "Miner", inputs = ["Fish", "Meat", "Bread"], slots_per_input = 2, use_one_each = false, output = "Stones" }
+CoalMine     = { size = "Mine",   boards = 4, worker = "Miner", inputs = ["Fish", "Meat", "Bread"], slots_per_input = 2, use_one_each = false, output = "Coal" }
+IronMine     = { size = "Mine",   boards = 4, worker = "Miner", inputs = ["Fish", "Meat", "Bread"], slots_per_input = 2, use_one_each = false, output = "IronOre" }
+GoldMine     = { size = "Mine",   boards = 4, worker = "Miner", inputs = ["Fish", "Meat", "Bread"], slots_per_input = 2, use_one_each = false, output = "Gold" }
+Woodcutter   = { size = "Hut",    boards = 2, worker = "Woodcutter", output = "Wood" }
+Fishery      = { size = "Hut",    boards = 2, worker = "Fisher", output = "Fish" }
+Quarry       = { size = "Hut",    boards = 2, worker = "Stonemason", output = "Stones" }
+Forester     = { size = "Hut",    boards = 2, worker = "Forester" }
+Slaughterhouse = { size = "House", boards = 2, stones = 2, worker = "Butcher", inputs = ["Ham"], output = "Meat" }
+Hunter       = { size = "Hut",    boards = 2, worker = "Hunter", output = "Meat" }
+Brewery      = { size = "House",  boards = 2, stones = 2, worker = "Brewer", inputs = ["Grain", "Water"], output = "Beer" }
+Armory       = { size = "House",  boards = 2, stones = 2, worker = "Armorer", inputs = ["Iron", "Coal"], output = "Sword" }
+Metalworks   = { size = "House",  boards = 2, stones = 2, worker = "Metalworker", inputs = ["Iron", "Boards"], output = "Tongs" }
+IronSmelter  = { size = "House",  boards = 2, stones = 2, worker = "IronFounder", inputs = ["IronOre", "Coal"], output = "Iron" }
+PigFarm      = { size = "Castle", boards = 3, stones = 3, worker = "PigBreeder", inputs = ["Grain", "Water"], output = "Ham" }
+Storehouse   = { size = "House",  boards = 4, stones = 3 }
+Mill         = { size = "House",  boards = 2, stones = 2, worker = "Miller", inputs = ["Grain"], output = "Flour" }
+Bakery       = { size = "House",  boards = 2, stones = 2, worker = "Baker", inputs = ["Flour", "Water"], output = "Bread" }
+Sawmill      = { size = "House",  boards = 2, stones = 2, worker = "Carpenter", inputs = ["Wood"], output = "Boards" }
+Mint         = { size = "House",  boards = 2, stones = 2, worker = "Minter", inputs = ["Gold", "Coal"], output = "Coins" }
+Well         = { size = "Hut",    boards = 2, worker = "Helper", output = "Water" }
+Shipyard     = { size = "House",  boards = 2, stones = 3, worker = "Shipwright", inputs = ["Boards"], output = "Boat" }
+Farm         = { size = "Castle", boards = 3, stones = 3, worker = "Farmer", output = "Grain" }
+DonkeyBreeder = { size = "Castle", boards = 3, stones = 3, worker = "DonkeyBreeder", inputs = ["Grain", "Water"] }
+Harbor       = { size = "Harbor", boards = 4, stones = 6, military = { soldiers = 0, coins = 0, radius = 8, sight = 11 } }
+
+# ---------------------------------------------------------------- HQ start (StartWares::Normal)
+[start.wares]
+Beer = 6
+Hammer = 16
+Axe = 6
+Saw = 2
+PickAxe = 2
+Shovel = 4
+Crucible = 4
+RodAndLine = 6
+Scythe = 8
+Cleaver = 2
+Rollingpin = 2
+Bow = 2
+Boat = 12
+Sword = 6
+Fish = 4
+Bread = 8
+Shield = 6
+Wood = 24
+Boards = 44
+Stones = 68
+IronOre = 16
+Coal = 16
+Meat = 6
+
+[start.jobs]
+Helper = 52
+Woodcutter = 8
+Forester = 4
+Carpenter = 4
+Stonemason = 4
+Hunter = 2
+Miner = 10
+Metalworker = 2
+Armorer = 4
+Builder = 10
+Planer = 6
+Private = 46
+Geologist = 6
+Scout = 2
+PackDonkey = 8

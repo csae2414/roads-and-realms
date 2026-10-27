@@ -1,0 +1,20 @@
+[package]
+name = "rr-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+postcard.workspace = true
+rr-sim.workspace = true
+rr-ai.workspace = true
+rr-rules.workspace = true
+
+[dev-dependencies]
+rr-core.workspace = true
+rr-formats.workspace = true
+rr-mapgen.workspace = true
+
+[lints]
+workspace = true

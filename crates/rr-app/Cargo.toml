@@ -1,0 +1,27 @@
+[package]
+name = "rr-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json = "1"
+rr-audio.workspace = true
+rr-ai.workspace = true
+rr-game.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+eframe = { version = "0.31", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"] }
+rr-formats.workspace = true
+rr-mapgen.workspace = true
+rr-sim.workspace = true
+rr-rules.workspace = true
+rr-world.workspace = true
+rr-core.workspace = true
+rr-net.workspace = true
+
+[lints]
+workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

@@ -1,0 +1,19 @@
+[package]
+name = "rr-ai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rr-mapgen.workspace = true
+rr-world.workspace = true
+rr-rules.workspace = true
+rr-sim.workspace = true
+rr-core.workspace = true
+serde.workspace = true
+postcard.workspace = true
+miniz_oxide = "0.9"
+
+[lints]
+workspace = true

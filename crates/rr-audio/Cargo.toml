@@ -1,0 +1,16 @@
+[package]
+name = "rr-audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rodio = { version = "0.21", default-features = false, features = ["playback", "vorbis"] }
+rr-world.workspace = true
+rr-rules.workspace = true
+rr-sim.workspace = true
+rr-core.workspace = true
+
+[lints]
+workspace = true
