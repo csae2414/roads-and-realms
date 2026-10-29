@@ -209,6 +209,13 @@ roads-and-realms/
   - p99 tick < 2 ms and no tick > 10 ms,
   - RSS < 500 MB,
   - save/load < 1 s.
+- Comments that cite their reasons: many comments and test docs name the finding that led to
+  a choice, as "(QA round 8, #9)", "(art director round 2, #4)", "(new-player round 7, #1)",
+  "(PLAN §27, #2)" or "(owner: ...)". They point at the project's review rounds (QA, architect,
+  art director, accessibility, new player, veteran, sound designer and others, each finding
+  numbered) and at its design plan: working notes kept out of this repository. The comment
+  itself says what was wrong and why the code is as it is; the citation only dates it. Tests
+  that read such a note (`docs/DEPARTURES.md`) skip where it isn't there.
 
 ## 9. As built (2026-10-23) — deviations from the plan above
 
@@ -222,7 +229,8 @@ The first implementation run made pragmatic choices; they are recorded here so t
 | Job programs as `Vec<Op>` | Hand-written state machines in `figures.rs` | Fewer moving parts for v0; programs remain the goal for modding. |
 | winit + wgpu renderer | eframe/egui with the glow (OpenGL) backend; terrain as textured egui meshes | Runs under Xvfb/llvmpipe for headless screenshots and UI tests. |
 | kira audio | rodio 0.21 | Small API, Ogg Vorbis. |
-| Original assets as default pack | Procedural terrain textures; people and animals as lit vector shapes (`animals.rs`, `sprites.rs`); Roman buildings as AI-painted pictures keyed by `tools/art/post.py` (agy and Codex); the rest pre-rendered by `tools/art/prerender.py` | No original files are needed to play. See docs/ART.md §0. |
+| Original assets as default pack | Procedural terrain textures; people and animals as lit vector shapes (`animals.rs`, `sprites.rs`); Roman buildings and the ships as AI-painted pictures (`tools/art/post.py`, `post_ship.py`); the rest pre-rendered by `tools/art/prerender.py` | No original files are needed to play. See docs/ART.md §0. |
+| (not planned) | Drawn-only map life in `crates/rr-app/src/ambience.rs`: wind, water, birds, footprints, worn earth, work you can see. It reads the game and never writes it; still details come from hashes of node coordinates and what the game put there, motion from the draw clock; `Life` (in the app, beside the carriers' idle times) keeps footprints, fought-over ground and startled birds. `View::draw` reaches it through swapped lines only (it is length-exempt) | The sync hash is unaffected (checked per change). Options → Calm map stops the motion (accessibility). |
 | Track B Europe after 1.0 | Done now: Natural Earth coastlines, real mountain ranges, land bridges at Dover/Øresund/Messina; plus Mare Nostrum, North America and the Far East | Seafaring exists (ships, expeditions, colonies, overseas supply); bridges stay where the original's maps would let you walk. Japan is reachable only by ship. Ranges and woods fade around starts so every start has ≥ 200 building spots (tested). |
 | Multiplayer after 1.0 | `rr-net`: LAN lockstep over TCP. Turns of 4 GF, commands run 2 turns later, the host bundles every player's commands per turn in player order; computer players run on every machine; clients send `sync_hash` every 50 turns and the host stops the game on a mismatch. The host sends the map as `.rrmap`, so float differences in map generation don't matter | No reconnect, no internet relay yet |
 | "Cheap" per-frame sync hash | `sync_hash` = hash of the full save (everything but transient events) | Called at the end of soaks and replays only; per-frame network checks need a cheaper rolling hash when multiplayer starts. |

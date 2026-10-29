@@ -1,5 +1,5 @@
 # Classic rule set: the original game's values, as RTTR plays them (fight_k is RTTR's default,
-# "medium strength"; see docs/DEPARTURES.md).
+# "medium strength").
 # Sources: RTTR master 566e923 (libs/s25main/gameData/*.h, JobConsts.cpp, nobHQ.cpp).
 # Integers only. Times are in game frames (GF, 50 ms at normal speed).
 

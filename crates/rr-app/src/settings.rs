@@ -20,6 +20,9 @@ pub struct Settings {
     pub auto_road: bool,
     /// Pause the game when attacked (single player; a11y round 2, #5).
     pub pause_on_attack: bool,
+    /// A calm map: the drawn-only life that moves (gusts, birds, glints, flying bits) stays
+    /// still, for players whom motion bothers.
+    pub calm_map: bool,
     /// A game has been won: the menu no longer starts on easy opponents.
     pub won_once: bool,
     /// The missions won (keys), marked ✔ in the menu.
@@ -93,6 +96,7 @@ impl Default for Settings {
             tips: true,
             auto_road: true,
             pause_on_attack: false,
+            calm_map: false,
             won_once: false,
             won_missions: Vec::new(),
             best: Vec::new(),
@@ -120,6 +124,7 @@ impl Settings {
             "tips": self.tips,
             "auto_road": self.auto_road,
             "pause_on_attack": self.pause_on_attack,
+            "calm_map": self.calm_map,
             "won_once": self.won_once,
             "won_missions": self.won_missions,
             "keys": self.keys.iter().map(|(a, k)| (a.clone(), json!(k))).collect::<serde_json::Map<_, _>>(),
@@ -154,6 +159,7 @@ impl Settings {
             tips: b("tips", d.tips),
             auto_road: b("auto_road", d.auto_road),
             pause_on_attack: b("pause_on_attack", d.pause_on_attack),
+            calm_map: b("calm_map", d.calm_map),
             won_once: b("won_once", d.won_once),
             won_missions: v
                 .get("won_missions")
@@ -261,6 +267,7 @@ mod tests {
             tips: false,
             auto_road: true,
             pause_on_attack: true,
+            calm_map: true,
             won_once: true,
             won_missions: vec!["europe".into()],
             best: vec![Best { mission: "north".into(), level: 0, minutes: 77, score: 60 }],

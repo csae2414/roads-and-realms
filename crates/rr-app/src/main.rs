@@ -5,6 +5,7 @@
 // (on Windows a window of its own, without a console beside it)
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod ambience;
 mod animals;
 mod app;
 mod editor;
@@ -77,7 +78,7 @@ pub struct Args {
 const HELP: &str = "rr-app [options]
   --map FILE.wld|.swd|.rrmap   play a map file (its .mission.json too)   --me N   the human's slot
   --europe | --mission first|europe|northamerica|north|fareast|mediterranean
-  --seed N  --players N  --size N  --landscape greenland|wasteland|winter  --islands  --goods low|medium|high
+  --seed N  --players N (at most 7)  --size N  --landscape greenland|wasteland|winter  --islands  --goods low|medium|high
   --ai easy|normal|hard  --allied
   --land-goal PERCENT (--three-quarters: 75)  --coins-goal N  --time-limit MINUTES
   --peace MINUTES  --peaceful (for good)
@@ -169,6 +170,11 @@ fn parse_args_from(mut it: impl Iterator<Item = String>) -> Args {
             a.map.as_deref().and_then(|p| missions::MapMission::load(std::path::Path::new(p))).and_then(|m| m.human)
     {
         a.me = h;
+    }
+    // (the map format knows seven player slots; asking for nine used to play seven without a word)
+    if a.players > rr_mapgen::MAX_PLAYERS {
+        eprintln!("at most {} players, not {}; playing {}", rr_mapgen::MAX_PLAYERS, a.players, rr_mapgen::MAX_PLAYERS);
+        a.players = rr_mapgen::MAX_PLAYERS;
     }
     a
 }
@@ -464,6 +470,14 @@ mod tests {
         assert!(super::parse_args_from(std::iter::empty()).auto_road);
         assert!(super::parse_args_from(["--auto-road".to_string()].into_iter()).auto_road);
         assert!(!super::parse_args_from(["--no-auto-road".to_string()].into_iter()).auto_road);
+    }
+
+    /// The map format knows seven castle slots: asking for nine says so instead of playing seven.
+    #[test]
+    fn too_many_players_are_named_and_clamped() {
+        let n = rr_mapgen::MAX_PLAYERS;
+        assert_eq!(super::parse_args_from(["--players".to_string(), "5".to_string()].into_iter()).players, 5);
+        assert_eq!(super::parse_args_from(["--players".to_string(), "9".to_string()].into_iter()).players, n);
     }
 }
 

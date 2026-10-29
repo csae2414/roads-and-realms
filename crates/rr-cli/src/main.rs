@@ -221,6 +221,16 @@ fn soak_game(g: &SoakGame, rules: std::sync::Arc<rr_rules::Rules>) -> (rr_sim::S
     (sim, ais)
 }
 
+/// The map format knows seven castle slots: asking for nine says so instead of playing seven
+/// quietly (the same rule `rr-app` states on its command line).
+fn named_players(n: usize) -> usize {
+    if n > rr_mapgen::MAX_PLAYERS {
+        eprintln!("at most {} players, not {}; playing {}", rr_mapgen::MAX_PLAYERS, n, rr_mapgen::MAX_PLAYERS);
+        return rr_mapgen::MAX_PLAYERS;
+    }
+    n
+}
+
 /// Run AIs against each other headless and print the economy every 5000 GF.
 #[allow(clippy::too_many_lines)] // to split (architect round 2, #8: no new long ones)
 fn soak(args: &[&str]) -> ExitCode {
@@ -270,7 +280,7 @@ fn soak(args: &[&str]) -> ExitCode {
             other => fail(&format!("soak: unknown option {other}")),
         }
     }
-    let g = SoakGame { map_path, seed, players, size, newcomer, campaign, peace, level };
+    let g = SoakGame { map_path, seed, players: named_players(players), size, newcomer, campaign, peace, level };
     let (mut sim, mut ais) = soak_game(&g, rules);
     // the newcomer stand-in keeps the truce as a player would: its attacks during it are dropped
     // (new-player round 8, #7: it took 3 buildings and lost 22 soldiers before minute 60)

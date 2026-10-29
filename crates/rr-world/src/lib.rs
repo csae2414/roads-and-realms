@@ -332,6 +332,12 @@ impl World {
         self.owner[self.i(p)].checked_sub(1)
     }
 
+    /// Is every node owned by a player below `count` (or by nobody)? The layer stores player + 1,
+    /// so a loaded save has to pass this before its land is counted per player.
+    pub fn owners_below(&self, count: usize) -> bool {
+        self.owner.iter().all(|&o| o as usize <= count)
+    }
+
     pub fn set_owner(&mut self, p: MapCoord, player: Option<u8>) {
         let i = self.i(p);
         self.owner[i] = player.map_or(0, |pl| pl + 1);

@@ -100,7 +100,7 @@ pub fn world_pos_unwrapped(sim: &Sim, ux: i32, uy: i32) -> Vec2 {
     Vec2::new(ux as f32 * TW + if uy & 1 == 1 { TW / 2.0 } else { 0.0 }, uy as f32 * TH - alt * HS)
 }
 
-fn neighbor_unwrapped(ux: i32, uy: i32, d: Direction) -> (i32, i32) {
+pub(crate) fn neighbor_unwrapped(ux: i32, uy: i32, d: Direction) -> (i32, i32) {
     let odd = uy & 1 == 1;
     match d {
         Direction::W => (ux - 1, uy),
@@ -247,6 +247,9 @@ pub struct View<'a> {
     /// This frame's fog per node in the drawn window (x0, y0, width, values), so the soft edge
     /// doesn't look each node up eight times.
     pub fog_cache: std::cell::RefCell<Option<(i32, i32, i32, Vec<f32>)>>,
+    /// What the map's look remembers (footprints, fought-over ground, the god's favour); none:
+    /// none of it (the editor's and the tests' views).
+    pub life: Option<&'a crate::ambience::Life>,
 }
 
 /// A catapult stone in flight, thrown at game frame `gf`.
@@ -402,14 +405,14 @@ impl View<'_> {
         self.to_screen(world_pos_unwrapped(self.sim, ux, uy))
     }
 
-    fn node_screen_dir(&self, p: MapCoord, d: Direction) -> Pos2 {
+    pub(crate) fn node_screen_dir(&self, p: MapCoord, d: Direction) -> Pos2 {
         let (ux, uy) = self.nearest_unwrapped(p);
         let (nx, ny) = neighbor_unwrapped(ux, uy, d);
         self.to_screen(world_pos_unwrapped(self.sim, nx, ny))
     }
 
     /// Visible unwrapped node range (rows extended for altitude).
-    fn visible(&self) -> (i32, i32, i32, i32) {
+    pub(crate) fn visible(&self) -> (i32, i32, i32, i32) {
         let size = self.rect.size() / self.cam.zoom;
         let x0 = (self.cam.offset.x / TW).floor() as i32 - 2;
         let x1 = ((self.cam.offset.x + size.x) / TW).ceil() as i32 + 2;
@@ -494,6 +497,36 @@ impl View<'_> {
 
     /// Fields as patches of land use around their node, under roads and objects (art director
     /// round 2, #8); the ears on top come with the objects.
+    /// What lies on the ground over the terrain: the fields, then the drawn-only life on it
+    /// (`ambience::ground`).
+    fn draw_ground(&self, painter: &egui::Painter, tex: &TerrainTextures, window: (i32, i32, i32, i32)) {
+        self.draw_fields(painter, tex, window);
+        crate::ambience::ground(self, painter, window);
+    }
+
+    /// A prop's picture (`(texture, rect, tint)`), the top of reeds, tufts and flowers bending
+    /// with the wind like the trees.
+    fn prop_picture(&self, painter: &egui::Painter, (t, r, tint): (egui::TextureId, Rect, Color32), sp: &Sprite) {
+        let bend = match sp {
+            Sprite::Prop(key, _) if !self.calm() => crate::ambience::prop_bend(key),
+            _ => 0.0,
+        };
+        if bend == 0.0 {
+            painter.image(t, r, Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)), tint);
+            return;
+        }
+        let w = self.world_at(r.center_bottom());
+        let own = (self.time * 1.7 + w.x * 0.05 + w.y * 0.03).sin() * 0.5;
+        let sway = (own + 3.0 * self.gust_at(r.center_bottom())) * bend * r.height() / 14.0;
+        let mut m = Mesh::with_texture(t);
+        m.vertices.push(Vertex { pos: r.left_top() + Vec2::new(sway, 0.0), uv: egui::pos2(0.0, 0.0), color: tint });
+        m.vertices.push(Vertex { pos: r.right_top() + Vec2::new(sway, 0.0), uv: egui::pos2(1.0, 0.0), color: tint });
+        m.vertices.push(Vertex { pos: r.right_bottom(), uv: egui::pos2(1.0, 1.0), color: tint });
+        m.vertices.push(Vertex { pos: r.left_bottom(), uv: egui::pos2(0.0, 1.0), color: tint });
+        m.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+        painter.add(Shape::mesh(m));
+    }
+
     fn draw_fields(&self, painter: &egui::Painter, tex: &TerrainTextures, (x0, x1, y0, y1): (i32, i32, i32, i32)) {
         let g = self.sim.world().grid();
         let mut meshes: Vec<Mesh> = tex.fields.iter().map(|t| Mesh::with_texture(t.id())).collect();
@@ -511,7 +544,9 @@ impl View<'_> {
                 let c = self.to_screen(world_pos_unwrapped(self.sim, ux, uy));
                 let world = Vec2::new(ux as f32 * TW, uy as f32 * TH);
                 let poly = field_patch(c, self.cam.zoom, world);
-                let light = self.shade(ux, uy);
+                // grown grain catches the light where a gust bends it (`ambience::gust`)
+                let wave = if stage >= 2 { 1.0 + 0.14 * self.gust_world(world) } else { 1.0 };
+                let light = self.shade(ux, uy).linear_multiply(wave);
                 let base = m.vertices.len() as u32;
                 // the texture is pinned to the world, so neighbouring patches line up
                 let uv = |q: Pos2| (((q - self.rect.min) / self.cam.zoom + self.cam.offset) / 64.0).to_pos2();
@@ -566,6 +601,18 @@ impl View<'_> {
         }
         let mut m = Mesh::with_texture(tex.clouds.id());
         let drift = Vec2::new(self.time * 0.01, self.time * 0.004);
+        // each node's cover once, shared by the four cells round it (it was worked out for every
+        // cell's corner: 0.85 ms zoomed out); `None`: not yet asked
+        let (cx0, cw) = (x0 - 1, x1 - x0 + 3);
+        let covers = std::cell::RefCell::new(vec![None; (cw * (y1 - y0 + 2)).max(0) as usize]);
+        let cover_at = |x: i32, y: i32| {
+            let i = (y - y0) * cw + (x - cx0);
+            let inside = (0..cw).contains(&(x - cx0)) && i >= 0 && (i as usize) < covers.borrow().len();
+            if !inside {
+                return (1.0 - self.fog_at(x, y) / 0.35).clamp(0.0, 1.0);
+            }
+            *covers.borrow_mut()[i as usize].get_or_insert_with(|| (1.0 - self.fog_at(x, y) / 0.35).clamp(0.0, 1.0))
+        };
         for uy in y0..y1 {
             for ux in x0..x1 {
                 let corners = [
@@ -581,7 +628,7 @@ impl View<'_> {
                 let base = m.vertices.len() as u32;
                 for (x, y) in corners {
                     // fully covering where unexplored, thinning out over two triangles
-                    let cover = (1.0 - self.fog_at(x, y) / 0.35).clamp(0.0, 1.0);
+                    let cover = cover_at(x, y);
                     let a = (cover * 255.0) as u8;
                     let flat = Vec2::new(x as f32 * TW + if y & 1 == 1 { TW / 2.0 } else { 0.0 }, y as f32 * TH);
                     let at = world_pos_unwrapped(self.sim, x, y);
@@ -612,6 +659,13 @@ impl View<'_> {
     }
 
     fn shade(&self, ux: i32, uy: i32) -> Color32 {
+        self.shade_fog(ux, uy).0
+    }
+
+    /// A node's lit colour (`shade`) and the fog over it (`fog_at`), worked out together: the
+    /// terrain pass needs both for every node, and the colour already needs the fog.
+    fn shade_fog(&self, ux: i32, uy: i32) -> (Color32, f32) {
+        let fog = self.fog_at(ux, uy);
         let g = self.sim.world().grid();
         let at = |x: i32, y: i32| {
             self.sim
@@ -640,13 +694,21 @@ impl View<'_> {
         };
         if self.sim.world().landscape == rr_core::Landscape::Winter {
             // snow is lit brighter, and its shade is blue, not grey (art director round 2, #7)
-            let v = (b / 1.2 * 255.0 * 1.12 * self.fog_at(ux, uy)).min(255.0);
+            let v = (b / 1.2 * 255.0 * 1.12 * fog).min(255.0);
             let k = if b < 1.0 { 1.0 - b } else { 0.0 };
             let c = |t: f32| (v * (1.0 - k * t)) as u8;
-            return Color32::from_rgb(c(0.75), c(0.55), c(0.15));
+            return (Color32::from_rgb(c(0.75), c(0.55), c(0.15)), fog);
         }
-        let v = (b / 1.2 * 255.0 * self.fog_at(ux, uy)) as u8;
-        Color32::from_rgb(v, v, v)
+        let v = (b / 1.2 * 255.0 * fog) as u8;
+        (Color32::from_rgb(v, v, v), fog)
+    }
+
+    /// One corner of the terrain pass: its screen point, light, flat world point, depth (given)
+    /// and fog.
+    fn terrain_corner(&self, cx: i32, cy: i32, depth: f32) -> (Pos2, Color32, Vec2, f32, f32) {
+        let (light, fog) = self.shade_fog(cx, cy);
+        let flat = Vec2::new(cx as f32 * TW + if cy & 1 == 1 { TW / 2.0 } else { 0.0 }, cy as f32 * TH);
+        (self.to_screen(world_pos_unwrapped(self.sim, cx, cy)), light, flat, depth, fog)
     }
 
     /// How much of the land's light fog lets through (0 unexplored, 1 in sight), averaged with
@@ -683,7 +745,7 @@ impl View<'_> {
         }
     }
 
-    fn vis(&self, p: MapCoord) -> rr_sim::Visibility {
+    pub(crate) fn vis(&self, p: MapCoord) -> rr_sim::Visibility {
         if self.reveal_all {
             return rr_sim::Visibility::Visible;
         }
@@ -691,7 +753,7 @@ impl View<'_> {
     }
 
     /// Is what happens at `p` shown to the player?
-    fn seen(&self, p: MapCoord) -> bool {
+    pub(crate) fn seen(&self, p: MapCoord) -> bool {
         match self.vis(p) {
             rr_sim::Visibility::Visible => true,
             rr_sim::Visibility::Fog => !self.fog_of_war,
@@ -810,17 +872,17 @@ impl View<'_> {
                         // water reaching over the shore is shallow water
                         let sc = |s: Color32| if water { shallow(water_light) } else { s };
                         let uv = |f: Vec2| (f / (TW * 2.3)).to_pos2();
-                        // ragged and steep (art director round 2, #2): the edge in six pieces, each
+                        // ragged and steep (art director round 2, #2): the edge in pieces, each
                         // reaching a depth from world-space noise, solid to 70 % of it, then gone
-                        const SEG: u32 = 6;
+                        let seg = edge_pieces(self.cam.zoom);
                         // land reaching over water ends in a strip of sand on the new coastline
                         let beach = rr_world::terrain::is_water(own) && !water;
                         let sand_base = sand.vertices.len() as u32;
-                        for i in 0..=SEG {
-                            let t = i as f32 / SEG as f32;
+                        for i in 0..=seg {
+                            let t = i as f32 / seg as f32;
                             let e = (a.0 + (b.0 - a.0) * t, a.2 + (b.2 - a.2) * t);
                             let light = lerp_color(a.1, b.1, t);
-                            let ki = if i == 0 || i == SEG { k } else { edge_depth(e.1, k) };
+                            let ki = if i == 0 || i == seg { k } else { edge_depth(e.1, k) };
                             if beach {
                                 for (depth, alpha) in [(ki * 0.4, 0u8), (ki * 0.68, 160), (ki * 0.9, 0)] {
                                     let (pw, pf) = (e.0 + (c.0 - e.0) * depth, e.1 + (c.2 - e.1) * depth);
@@ -840,7 +902,7 @@ impl View<'_> {
                                 });
                             }
                         }
-                        for i in 0..SEG {
+                        for i in 0..seg {
                             let (r0, r1) = (base + i * 3, base + (i + 1) * 3);
                             for j in 0..2 {
                                 mesh.indices.extend_from_slice(&[
@@ -1112,14 +1174,8 @@ impl View<'_> {
         let table: Vec<(Pos2, Color32, Vec2, f32, f32)> = (0..th * tw)
             .map(|i| {
                 let (cx, cy) = (tx0 + i % tw, y0 + i / tw);
-                (
-                    self.to_screen(world_pos_unwrapped(self.sim, cx, cy)),
-                    self.shade(cx, cy),
-                    Vec2::new(cx as f32 * TW + if cy & 1 == 1 { TW / 2.0 } else { 0.0 }, cy as f32 * TH),
-                    // 0 at the shore, 1 four steps out
-                    depth_at(cx, cy) as f32 / DEEP as f32,
-                    self.fog_at(cx, cy),
-                )
+                // (depth: 0 at the shore, 1 four steps out)
+                self.terrain_corner(cx, cy, depth_at(cx, cy) as f32 / DEEP as f32)
             })
             .collect();
         for uy in y0..y1 {
@@ -1176,7 +1232,7 @@ impl View<'_> {
         // (the edges light their corners from the terrain's table: perf round 3, #6)
         let shades = Shades { window: (x0, x1, y0, y1), x0: tx0, w: tw, v: table.iter().map(|t| t.1).collect() };
         self.draw_edges(painter, tex, &shades);
-        self.draw_fields(painter, tex, (x0, x1, y0, y1));
+        self.draw_ground(painter, tex, (x0, x1, y0, y1));
         self.draw_clouds(painter, tex, (x0, x1, y0, y1));
 
         let z = self.cam.zoom;
@@ -1441,9 +1497,7 @@ impl View<'_> {
                 let s = if matches!(sp, Sprite::Decoration(0x16) | Sprite::Prop(..))
                     && matches!(world.obj(p), NodeObj::None)
                 {
-                    let h = (p.x as u32).wrapping_mul(2_654_435_761) ^ (p.y as u32).wrapping_mul(40_503);
-                    let j = |k: u32| ((h >> k) % 7) as f32 / 6.0 - 0.5;
-                    s + Vec2::new(j(3) * 0.6 * TW, j(9) * 0.6 * TH) * z
+                    s + prop_jitter(p) * z
                 } else {
                     s
                 };
@@ -1581,26 +1635,19 @@ impl View<'_> {
                 }
                 continue;
             }
-            if let Sprite::Holy { god, mine } = sp
-                && self.draw_holy(painter, tex, at, *god, *mine)
-            {
+            if self.draw_picture(painter, tex, at, sp) {
                 continue;
             }
             // props and granite from their pictures
             let picture = match sp {
-                Sprite::Prop(key, k) => tex.props.get(*key).map(|t| (t, *k, prop_tint(key))),
+                Sprite::Prop(key, k) => self.prop_look(tex, key, *k, at),
                 Sprite::Granite { size, .. } if z >= 0.55 => {
                     tex.props.get(&format!("granite{}", (*size).clamp(1, 6))).map(|t| (t, 0.5, Color32::WHITE))
                 }
                 _ => None,
             };
             if let Some(((t, w, h), k, tint)) = picture {
-                painter.image(
-                    t.id(),
-                    prop_rect(at, *w, *h, k * z),
-                    Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                    tint,
-                );
+                self.prop_picture(painter, (t.id(), prop_rect(at, *w, *h, k * z), tint), sp);
                 continue;
             }
             if matches!(sp, Sprite::Prop(..)) {
@@ -1612,12 +1659,12 @@ impl View<'_> {
                 && z >= 0.55
                 && let Some((t, w, h)) = tex.trees.get(sprites::tree_kind(*species, *look))
             {
-                tree_picture(painter, t.id(), (*w, *h), at, z, (*stage, *seed), self.time);
+                tree_picture(painter, t.id(), (*w, *h), at, z, (*stage, *seed), (self.time, self.gust_at(at)));
                 continue;
             }
             sprites::draw(painter, at, z, sp, self.time);
         }
-        // the selected node: a ring in front of everything, on empty ground too
+        crate::ambience::above(self, painter); // then the selected node's ring, on empty ground too
         if let Some(p) = self.selected {
             let s = self.node_screen(p);
             painter.circle_stroke(s, 9.0 * z, Stroke::new(2.5_f32, Color32::from_black_alpha(140)));
@@ -1959,10 +2006,11 @@ fn tree_picture(
     at: Pos2,
     z: f32,
     (stage, seed): (u8, u32),
-    time: f32,
+    (time, gust): (f32, f32),
 ) {
     let s = sprites::tree_growth(stage);
-    let sway = ((time * 1.3 + seed as f32 * 0.37).sin()) * 1.2 * s * z;
+    // its own slow sway, and the gusts rolling through the forest (`ambience::gust`)
+    let sway = crate::ambience::tree_sway(time, seed, gust) * 1.2 * s * z;
     let height = 40.0 * s * z;
     let width = height * w / h;
     let mut m = Mesh::with_texture(t);
@@ -2007,7 +2055,19 @@ impl View<'_> {
     fn draw_holy(&self, painter: &egui::Painter, tex: &TerrainTextures, at: Pos2, god: u8, mine: bool) -> bool {
         let Some((t, r)) = holy_rect(tex, at, self.cam.zoom, god) else { return false };
         let full = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+        // round Concordia's, flowers that spread with her favour (behind the place, then over it
+        // the altar's smoke and her doves: `ambience::holy_life`)
+        let favour = if god == 1 { self.life.map_or(0, |l| l.favour) } else { 0 };
+        for k in 0..crate::ambience::concordia_flowers(favour) {
+            let a = k as f32 / 8.0 * std::f32::consts::TAU + 0.4;
+            let at = at + Vec2::new(a.cos() * 0.55 * r.width(), a.sin() * 0.18 * r.width());
+            let key = ["flowers1", "flowers2", "flowers3"][k % 3];
+            if let Some((ft, w, h)) = tex.props.get(key) {
+                painter.image(ft.id(), prop_rect(at, *w, *h, 0.5 * self.cam.zoom), full, Color32::WHITE);
+            }
+        }
         painter.image(t, r, full, Color32::WHITE);
+        crate::ambience::holy_life(self, painter, r.center_top() + Vec2::new(0.0, 0.3 * r.height()), (god, mine));
         // (Jupiter's: his vultures)
         if mine && god == 0 {
             let z = self.cam.zoom;
@@ -2021,6 +2081,83 @@ impl View<'_> {
                 crate::animals::omen_bird(painter, c, 0.9 * z, a.sin() > 0.0, flap, vulture);
             }
         }
+        true
+    }
+
+    /// The pictures drawn instead of a sprite: a holy place's, a ship's (false: none, so the
+    /// sprite is drawn).
+    fn draw_picture(&self, painter: &egui::Painter, tex: &TerrainTextures, at: Pos2, sp: &Sprite) -> bool {
+        match sp {
+            Sprite::Holy { god, mine } => self.draw_holy(painter, tex, at, *god, *mine),
+            Sprite::Ship { color, loaded, dir } => self.draw_ship(painter, tex, at, (*color, *loaded, *dir)),
+            _ => false,
+        }
+    }
+
+    /// A ship from its painted picture (`TerrainTextures::ships`), facing one of six ways (the
+    /// westward ones mirrored) and bobbing; under it a soft shadow, a broken, tapering wake and
+    /// foam at the bow; over it the owner's colour, a band across the sail and a pennant at the
+    /// masthead. False when there is no picture (the drawn ship stands in).
+    fn draw_ship(
+        &self,
+        painter: &egui::Painter,
+        tex: &TerrainTextures,
+        at: Pos2,
+        (color, loaded, dir): (Color32, bool, Option<Direction>),
+    ) -> bool {
+        use Direction as D;
+        // its own picture for each heading (light from the upper left on all six); a westward
+        // one missing, the eastward one mirrored
+        let (own, east) = match dir {
+            Some(D::NE) => ("ship_ne", "ship_ne"),
+            Some(D::NW) => ("ship_nw", "ship_ne"),
+            Some(D::SE) => ("ship_se", "ship_se"),
+            Some(D::SW) => ("ship_sw", "ship_se"),
+            Some(D::W) => ("ship_w", "ship_e"),
+            _ => ("ship_e", "ship_e"),
+        };
+        let load = if loaded { "_loaded" } else { "" };
+        let pick = |k: &str| tex.ships.get(&format!("{k}{load}")).or_else(|| tex.ships.get(k));
+        let (p, west) = match (pick(own), pick(east)) {
+            (Some(p), _) => (p, false),
+            (None, Some(p)) => (p, own != east),
+            (None, None) => return false,
+        };
+        let (z, s) = (self.cam.zoom, self.cam.zoom * 0.5);
+        let calm = self.calm();
+        let phase = self.world_at(at).x * 0.013;
+        let bob = if calm { 0.0 } else { (self.time * 1.8 + phase).sin() * 0.8 * z };
+        let size = Vec2::new(p.w, p.h) * s;
+        let ax = if west { p.w - p.ax } else { p.ax };
+        let min = at - Vec2::new(ax, p.ay) * s + Vec2::new(0.0, bob);
+        // stern and bow: the waterline's ends (the westward headings have the bow on the left;
+        // a mirrored picture swaps them back)
+        let on = |q: [f32; 2]| min + Vec2::new(if west { 1.0 - q[0] } else { q[0] } * size.x, q[1] * size.y);
+        let (left, right) = (on(p.keel[0]), on(p.keel[1]));
+        let bow_left = matches!(dir, Some(D::W | D::NW | D::SW));
+        let (stern, bow) = if bow_left { (right, left) } else { (left, right) };
+        let moving = dir.is_some();
+        crate::ambience::ship_water(painter, (stern, bow, moving), z, if calm { 0.0 } else { self.time });
+        let (u0, u1) = if west { (1.0, 0.0) } else { (0.0, 1.0) };
+        let mut m = Mesh::with_texture(p.tex.id());
+        let white = Color32::WHITE;
+        m.vertices.push(Vertex { pos: min, uv: egui::pos2(u0, 0.0), color: white });
+        m.vertices.push(Vertex { pos: min + Vec2::new(size.x, 0.0), uv: egui::pos2(u1, 0.0), color: white });
+        m.vertices.push(Vertex { pos: min + size, uv: egui::pos2(u1, 1.0), color: white });
+        m.vertices.push(Vertex { pos: min + Vec2::new(0.0, size.y), uv: egui::pos2(u0, 1.0), color: white });
+        m.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+        painter.add(Shape::mesh(m));
+        // the owner's colour: a band across the middle of the sail, following its corners
+        let [tl, tr, br, bl] = p.sail.map(on);
+        let lerp = |a: Pos2, b: Pos2, t: f32| a + (b - a) * t;
+        let band = vec![lerp(tl, bl, 0.38), lerp(tr, br, 0.38), lerp(tr, br, 0.62), lerp(tl, bl, 0.62)];
+        // (a thin darker edge: a light colour still stands out on the white sail)
+        let edge = Stroke::new(0.6 * z, Color32::from_black_alpha(90));
+        painter.add(Shape::convex_polygon(band, color.gamma_multiply(0.88), edge));
+        let flap = if calm { 0.6 } else { 0.6 + 0.4 * (self.time * 6.0 + phase).sin() };
+        let top = on(p.mast);
+        let tip = top + Vec2::new(14.0 * flap, 2.0) * z;
+        painter.add(Shape::convex_polygon(vec![top, tip, top + Vec2::new(0.0, 5.0 * z)], color, edge));
         true
     }
 
@@ -2140,9 +2277,52 @@ fn prop_rect(at: Pos2, w: f32, h: f32, scale: f32) -> Rect {
 /// A prop's colour over its picture. The meadow's pebbles are earth-brown and a little see-through,
 /// so they never read as the grey quarry rocks that block building (owner's playtest
 /// 2026-10-27: "we must just be sure that it doesn't interfere visually").
+/// Where a loose prop lies around its node (world pixels before zoom): anywhere near it, not on
+/// the grid.
+pub(crate) fn prop_jitter(p: MapCoord) -> Vec2 {
+    let h = (p.x as u32).wrapping_mul(2_654_435_761) ^ (p.y as u32).wrapping_mul(40_503);
+    let j = |k: u32| ((h >> k) % 7) as f32 / 6.0 - 0.5;
+    Vec2::new(j(3) * 0.6 * TW, j(9) * 0.6 * TH)
+}
+
+impl View<'_> {
+    /// A meadow prop's picture, size and tint.
+    #[allow(clippy::type_complexity)]
+    fn prop_look<'t>(
+        &self,
+        tex: &'t TerrainTextures,
+        key: &str,
+        k: f32,
+        at: Pos2,
+    ) -> Option<(&'t (egui::TextureHandle, f32, f32), f32, Color32)> {
+        tex.props.get(prop_picture_key(key)).map(|t| (t, k, self.prop_tint_at(key, at)))
+    }
+
+    /// A prop's tint, a little lighter or darker, greener or warmer by where it lies (each bush
+    /// and stone its own, the same each frame).
+    fn prop_tint_at(&self, key: &str, at: Pos2) -> Color32 {
+        let base = prop_tint(key);
+        let w = self.world_at(at);
+        let h = crate::ambience::hash((w.x / 4.0).round() as i32, (w.y / 4.0).round() as i32, 8);
+        let v = 0.9 + crate::ambience::unit(h) * 0.16;
+        let lean = crate::ambience::unit(h >> 16) - 0.5;
+        let (r, g) =
+            if key.contains("bush") { (1.0 - 0.06 * lean, 1.0 + 0.06 * lean) } else { (1.0 + 0.04 * lean, 1.0) };
+        let c = |x: u8, k: f32| (x as f32 * v * k).clamp(0.0, 255.0) as u8;
+        Color32::from_rgba_unmultiplied(c(base.r(), r), c(base.g(), g), c(base.b(), 1.0), base.a())
+    }
+}
+
+/// Which picture a prop is drawn from (beach shingle is the pebbles' picture, tinted pale).
+fn prop_picture_key(key: &str) -> &str {
+    if key == "shingle" { "stones2" } else { key }
+}
+
 fn prop_tint(key: &str) -> Color32 {
     match key {
         "stones1" | "stones2" => Color32::from_rgba_unmultiplied(196, 168, 128, 215),
+        // (beach shingle: pale and sandy, it read as dark specks on the sand)
+        "shingle" => Color32::from_rgba_unmultiplied(236, 222, 196, 190),
         _ => Color32::WHITE,
     }
 }
@@ -2152,7 +2332,7 @@ fn prop_scale(key: &str, scale: f32) -> f32 {
     if key.starts_with("stones") { scale * 0.7 } else { scale }
 }
 
-fn meadow_prop(world: &rr_world::World, p: MapCoord) -> Option<Sprite> {
+pub(crate) fn meadow_prop(world: &rr_world::World, p: MapCoord) -> Option<Sprite> {
     if world.is_on_road(p) {
         return None;
     }
@@ -2162,24 +2342,75 @@ fn meadow_prop(world: &rr_world::World, p: MapCoord) -> Option<Sprite> {
     let wet = ts.iter().filter(|t| rr_world::terrain::is_water(**t)).count();
     let land = |t: &u8| !rr_world::terrain::is_water(*t) && !rr_world::terrain::is_mountain(*t) && *t != 2;
     let scale = 0.45 + ((h >> 20) % 16) as f32 / 100.0;
+    let winter = world.landscape == rr_core::Landscape::Winter;
     if wet > 0 && wet < 6 && ts.iter().any(land) {
-        // the shore: reeds on one node in three (none in winter)
-        return (h % 3 == 0 && world.landscape != rr_core::Landscape::Winter)
+        // the shore: pebbles on its sand, else reeds on one node in three (none in winter)
+        if ts.iter().any(|t| matches!(t, 4 | 7)) && h % 7 == 1 {
+            return Some(Sprite::Prop(if winter { "icestones" } else { "shingle" }, scale * 0.4));
+        }
+        return (h % 3 == 0 && !winter)
             .then_some(Sprite::Prop(if (h >> 8) & 1 == 0 { "reeds1" } else { "reeds2" }, scale * 0.75));
     }
-    if h % 4 != 0 || !ts.iter().all(|t| land(t) && rr_world::terrain::is_vital(*t)) {
+    // the foot of a mountain: scree fallen from above, so a range doesn't end in a hard line
+    let rock = ts.iter().filter(|t| rr_world::terrain::is_mountain(**t)).count();
+    if (1..6).contains(&rock) && ts.iter().any(land) {
+        let key = if winter {
+            "icestones"
+        } else if (h >> 6) & 1 == 0 {
+            "stones1"
+        } else {
+            "stones2"
+        };
+        return (h % 2 == 0).then_some(Sprite::Prop(key, prop_scale(key, scale * 0.75)));
+    }
+    // props bunch in drifts (a slow pattern over the map): flowery meadows, bare stretches
+    let drift = crate::ambience::value_noise(p.x as f32 / 5.0, p.y as f32 / 5.0, 3);
+    let every = if drift > 0.3 {
+        2
+    } else if drift < -0.35 {
+        8
+    } else {
+        4
+    };
+    if h % every != 0 || !ts.iter().all(|t| land(t) && rr_world::terrain::is_vital(*t)) {
         return None;
+    }
+    let greenland = world.landscape == rr_core::Landscape::Greenland;
+    // mushrooms on the forest floor, next to trees (they come and go with the forest)
+    let by_trees = world.grid().neighbors(p).iter().any(|q| matches!(world.obj(*q), NodeObj::Tree { .. }));
+    if greenland && by_trees && (h >> 6) % 3 == 0 {
+        return Some(Sprite::Prop("mushrooms", scale * 0.8));
+    }
+    if greenland && drift > 0.3 && (h >> 5) % 3 != 0 {
+        let key = ["flowers1", "flowers2", "flowers3"][((h >> 9) % 3) as usize];
+        return Some(Sprite::Prop(key, scale));
+    }
+    // stones lie together in outcrops (another slow pattern), not one here and one there
+    let outcrop = crate::ambience::value_noise(p.x as f32 / 4.0, p.y as f32 / 4.0, 4) > 0.3;
+    if outcrop && (h >> 11) % 3 != 0 {
+        let key = match world.landscape {
+            rr_core::Landscape::Winter => "icestones",
+            _ if (h >> 13) & 1 == 0 => "stones1",
+            _ => "stones2",
+        };
+        return Some(Sprite::Prop(key, prop_scale(key, spread(scale, h))));
     }
     let set: &[&'static str] = match world.landscape {
         rr_core::Landscape::Greenland => &[
             "bush1", "bush2", "bush3", "flowers1", "flowers2", "flowers3", "stump", "tuft1", "tuft2", "tuft1", "tuft2",
-            "stones1", "stones2",
         ],
-        rr_core::Landscape::Wasteland => &["drybush", "drybush", "bones", "stones1", "stones2", "tuft2"],
-        rr_core::Landscape::Winter => &["snowbush", "snowbush", "icestones", "stones2"],
+        rr_core::Landscape::Wasteland => &["drybush", "drybush", "bones", "tuft2", "tuft2"],
+        rr_core::Landscape::Winter => &["snowbush", "snowbush", "stones2"],
     };
     let key = set[((h >> 4) as usize) % set.len()];
+    let scale = if key.contains("bush") || key == "stump" { spread(scale, h) } else { scale };
     Some(Sprite::Prop(key, prop_scale(key, scale)))
+}
+
+/// A wider spread of sizes for rocks, bushes and stumps (0.38..0.7 of their picture, by the
+/// node), so a field of them doesn't look stamped.
+fn spread(scale: f32, h: u32) -> f32 {
+    scale * (0.8 + ((h >> 24) % 32) as f32 / 31.0 * 0.4)
 }
 
 /// The outline of a field's patch around its node at screen point `c`: an eight-sided shape
@@ -2295,6 +2526,18 @@ fn edge_depth(flat: Vec2, k: f32) -> f32 {
 fn lerp_color(a: Color32, b: Color32, t: f32) -> Color32 {
     let l = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t) as u8;
     Color32::from_rgba_premultiplied(l(a.r(), b.r()), l(a.g(), b.g()), l(a.b(), b.b()), l(a.a(), b.a()))
+}
+
+/// How many ragged pieces an edge between two terrains is drawn in: six close up, fewer far
+/// out, where a piece is only a few pixels (the zoomed-out frame went over its 7 ms).
+fn edge_pieces(zoom: f32) -> u32 {
+    if zoom >= 0.7 {
+        6
+    } else if zoom >= 0.45 {
+        4
+    } else {
+        3
+    }
 }
 
 /// Shallow water's tint (the terrain pass's shore colour; `fog` 0 dark .. 1 clear).
@@ -2828,6 +3071,7 @@ mod tests {
             reveal_all: true,
             scenery: true,
             fog_cache: Default::default(),
+            life: None,
         };
         assert_eq!(view.pick_click(view.node_screen(flag)), flag);
         // the hut's own picture still picks the hut
@@ -2868,6 +3112,7 @@ mod tests {
             reveal_all: true,
             scenery: true,
             fog_cache: Default::default(),
+            life: None,
         };
         let at = view.node_screen(hq);
         let above = at - Vec2::new(0.0, 30.0);
@@ -2967,6 +3212,7 @@ mod draw_bench {
                     reveal_all: false,
                     scenery: true,
                     fog_cache: Default::default(),
+                    life: None,
                 };
                 let mut times = Vec::new();
                 for _ in 0..20 {
@@ -2988,6 +3234,8 @@ mod draw_bench {
                 part("edges", &|| view.draw_edges(&painter, &tex, &none));
                 part("fields", &|| view.draw_fields(&painter, &tex, vis));
                 part("clouds", &|| view.draw_clouds(&painter, &tex, vis));
+                part("map life, ground", &|| crate::ambience::ground(&view, &painter, vis));
+                part("map life, above", &|| crate::ambience::above(&view, &painter));
             }
         });
     }

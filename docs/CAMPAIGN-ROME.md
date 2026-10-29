@@ -1,6 +1,6 @@
 # The Roman campaign: design draft
 
-*Status: draft for discussion. Nothing implemented yet. Decisions so far are listed below.*
+*Status: implemented. Ten chapters (`ROME` in `crates/rr-game/src/missions.rs`), their holy places on the maps, the gods' favour and the beats (`crates/rr-game/src/story.rs`), opened one by one from the menu. What follows stays the place where the design is argued out; the decisions so far are listed below.*
 
 ## Decided (2026-10-27)
 

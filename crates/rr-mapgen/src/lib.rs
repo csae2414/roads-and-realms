@@ -8,10 +8,16 @@ pub mod region;
 pub mod rome;
 pub mod world;
 
+/// The most castles a map has room for: the map format, `MapData::validate` and the game know
+/// seven player slots (`generate` takes a bigger count down to this; the tools say so, so
+/// `--players 9` never quietly plays seven).
+pub const MAX_PLAYERS: usize = 7;
+
 #[derive(Clone, Debug)]
 pub struct GenParams {
     pub width: u16,
     pub height: u16,
+    /// Castles to place; more than [`MAX_PLAYERS`] become `MAX_PLAYERS`.
     pub players: usize,
     pub seed: u64,
     /// Share of the map that is water, in percent.
@@ -343,9 +349,26 @@ fn start_positions(p: &GenParams, grid: &Grid, elev: &mut [f32], rng: &mut Pcg32
         return rome::seven_hills(p, grid, elev);
     }
     let mut hq: Vec<MapCoord> = Vec::new();
-    let cands: Vec<MapCoord> =
-        grid.coords().filter(|c| (0.38..0.6).contains(&elev[grid.index(*c)]) && c.y % 2 == 0).collect();
-    for i in 0..p.players {
+    // The chosen band (and its every other row) can hold no node at all on a very small map, and
+    // `rng.below(0)` asserts: widen to all land, then to the whole map, so a call with any size
+    // has a pick. (Nothing widens for a normal map, so the same seed still gives the same map.)
+    let all: Vec<MapCoord> = grid.coords().collect();
+    let in_band = |lo: f32, hi: f32, every_other: bool| {
+        all.iter()
+            .filter(|c| (lo..hi).contains(&elev[grid.index(**c)]) && (!every_other || c.y % 2 == 0))
+            .copied()
+            .collect::<Vec<MapCoord>>()
+    };
+    let mut cands = in_band(0.38, 0.6, true);
+    if cands.is_empty() {
+        cands = in_band(0.3, 0.7, false);
+    }
+    if cands.is_empty() {
+        cands = all;
+    }
+    // (the map format and `MapData::validate` know at most `MAX_PLAYERS` castle slots)
+    let players = p.players.min(MAX_PLAYERS);
+    for i in 0..players {
         let pick = if i == 0 {
             cands[rng.below(cands.len() as u32) as usize]
         } else {

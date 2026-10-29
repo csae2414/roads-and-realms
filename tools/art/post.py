@@ -1,12 +1,12 @@
-"""Turn generated building renders (agy or Codex, green background) into game sprites.
+"""Turn generated building renders (an AI image tool, green background) into game sprites.
 
-uv run --no-project --with pillow --with numpy python tools/art/post.py art-gen/bld assets/art/buildings
+uv run --no-project --with pillow --with numpy python tools/art/post.py <the folder of generated pictures> assets/art/buildings
 
 - chroma key on #00FF00 with despill, soft 1px edge
 - green enclosed by the building (a mill's lattice sails, a pen's floor) is see-through as well
   (it was a dark interior colour, for open doors: the sails came out as dark slabs)
 - crop, scale to 1.5x the size class width (as prerender.py: crisp up to zoom 3), write PNG +
-  manifest.json (the size on the map, and which model made it)
+  manifest.json (the size on the map, and how the picture was made)
 """
 import json, sys
 from pathlib import Path
@@ -16,14 +16,12 @@ from collections import deque
 
 WIDTH = {"hut": 84, "house": 112, "castle": 156, "mine": 84}
 HIRES = 1.5
-# the pictures agy made (2026-10-23); the rest came from Codex's image tool (2026-10-26)
-AGY = {"headquarters", "woodcutter"}
 SIZE = {
     "headquarters": "castle", "fortress": "castle", "farm": "castle", "pigfarm": "castle", "donkeybreeder": "castle", "harbor": "castle",
     "granitemine": "mine", "coalmine": "mine", "ironmine": "mine", "goldmine": "mine",
     "barracks": "hut", "guardhouse": "hut", "lookouttower": "hut", "woodcutter": "hut", "fishery": "hut", "quarry": "hut",
     "forester": "hut", "hunter": "hut", "well": "hut",
-    # the Roman campaign's holy places (art-gen/holy, docs/CAMPAIGN-ROME.md)
+    # the Roman campaign's holy places (docs/CAMPAIGN-ROME.md)
     "juno_capitol": "castle", "mars": "castle", "carthage_temple": "castle",
     "concordia": "hut", "juno_veii": "hut",
 }
@@ -78,8 +76,7 @@ def process(src: Path, dst: Path, key: str):
     img = img.resize((round(tw * HIRES), round(th * HIRES)), Image.LANCZOS)
     img.save(dst / f"{key}.png")
     # anchor: the building node sits a little above the lowest point of the silhouette
-    source = "agy" if key in AGY else "codex"
-    return {"w": tw, "h": th, "ax": tw / 2, "ay": th - th * 0.14, "source": source}
+    return {"w": tw, "h": th, "ax": tw / 2, "ay": th - th * 0.14, "source": "prompt"}
 
 def main():
     src, dst = Path(sys.argv[1]), Path(sys.argv[2])

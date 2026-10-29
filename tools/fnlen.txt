@@ -1,7 +1,7 @@
 crates/rr-ai/src/lib.rs::economy 323
 crates/rr-app/src/app.rs::map_input 265
 crates/rr-app/src/editor.rs::panel 333
-crates/rr-app/src/render.rs::draw 657
+crates/rr-app/src/render.rs::draw 642
 crates/rr-app/src/render.rs::draw_edges 180
 crates/rr-app/src/sprites.rs::building 270
 crates/rr-app/src/sprites.rs::draw 320

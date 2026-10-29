@@ -68,7 +68,8 @@ pub fn due_deeds(tale: &Tale, seen: &Seen, done: u32) -> Vec<(u32, Deed)> {
 /// `to`'s castle, if there is one.
 pub fn hand_over_spot(sim: &rr_sim::Sim, me: u8, to: u8) -> Option<rr_core::MapCoord> {
     let g = sim.world().grid();
-    let target = sim.players().get(to as usize)?.hq.map(|h| sim.building(h).pos)?;
+    // a lost castle leaves a dead id in `Player::hq`, so ask where it stands (it may stand nowhere)
+    let target = sim.hq_pos(to)?;
     sim.buildings()
         .iter()
         .filter(|(_, b)| {

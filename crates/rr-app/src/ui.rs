@@ -888,6 +888,7 @@ pub fn options_window(app: &mut App, ctx: &egui::Context) {
         ui.checkbox(&mut app.auto_road, crate::i18n::tr("Start a road after placing a building"));
         ui.checkbox(&mut app.tips, crate::i18n::tr("Tips for beginners (in the messages)"));
         ui.checkbox(&mut app.pause_on_attack, crate::i18n::tr("Pause when attacked"));
+        ui.checkbox(&mut app.calm_map, crate::i18n::tr("Calm map (no swaying, birds or sparkles)"));
         if ui.checkbox(&mut app.fog_of_war, crate::i18n::tr("Fog of war (land out of sight is dimmed)")).changed() {
             app.minimap = None;
         }

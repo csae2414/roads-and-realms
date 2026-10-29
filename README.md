@@ -17,7 +17,7 @@ wood and stone to gold coins, and push your borders with soldiers.
 </tr>
 <tr>
 <td><img src="docs/images/winter.jpg" alt="A winter realm"></td>
-<td><img src="docs/images/islands.jpg" alt="A ship off an island"></td>
+<td><img src="docs/images/islands.jpg" alt="Two Roman merchant ships between the islands"></td>
 </tr>
 <tr>
 <td align="center">Winter landscapes</td>
@@ -118,6 +118,7 @@ Opponents: easy, normal, hard (`--ai`). `--help` lists every option.
 | Without a mouse | Enter shows a map cursor; arrows and Home / PageUp / End / PageDown move it, Enter clicks, 1-9 / F / T in the action window, Backspace takes back a road step |
 | Sound | Options: volume, music, sounds, ambience; Ctrl+M mutes |
 | Keys | Options → Keys: click an action, press its new key |
+| Calm map | Options → Calm map: the map's drawn-only motion (gusts in the trees, birds, sparkles, flying bits) stays still |
 
 **Maps:** the title menu's map editor saves `.rrmap` files to `~/.local/share/roads-and-realms/maps`
 (F5 or Ctrl+S; Ctrl+Z / Ctrl+Y undo and redo). The menu lists them with size and players, together with
@@ -161,13 +162,20 @@ First and Next steps, the odds before an attack, a camera that follows a settler
 something needs you, news of the first coin, general and ship, where the wares on the way are going
 (the inventory's hover), and "Today's map" to compare a game with friends.
 
-Graphics: the Roman buildings are AI-painted pictures (two by Gemini through agy, thirty by OpenAI's image model
-through the Codex CLI, from our own prompts; see `assets/PROVENANCE.md`); the other peoples' buildings, the winter
+Graphics: the Roman buildings are AI-painted pictures (thirty-two of them, each from our own text prompt; see
+`assets/PROVENANCE.md`); the other peoples' buildings, the winter
 pictures, trees and props come from our own ray marcher (`tools/art/prerender.py`); terrain, people and animals are
-drawn by the game (lit shapes, `crates/rr-app/src/animals.rs`).
+drawn by the game (lit shapes, `crates/rr-app/src/animals.rs`). The ships are a Roman merchant ship (a corbita),
+painted the same way in its own picture for each of the six headings, empty and loaded with amphorae; the owner's
+colour is a band across the sail and a pennant, and a wake trails behind.
 
-Not yet: AI-painted buildings for the other three peoples and for winter, internet play (LAN only), the Roman
-campaign's chapters II-X.
+The map lives, in details that are only drawn and never part of the map, the save or the game (the same map always
+looks the same; `crates/rr-app/src/ambience.rs`): gusts rolling through trees, reeds and grain, foam rolling onto the
+beaches, sparkles, jumping fish, ducks and lily pads on still water, mist, worn earth before the doors, a darker forest
+floor, flowers in drifts, footprints in snow and sand, birds startled from the trees, smoke and sparks at work, the
+firelight of a working smithy, lava embers and swamp fireflies.
+
+Not yet: AI-painted buildings for the other three peoples and for winter, internet play (LAN only).
 
 ## Develop
 
@@ -180,6 +188,8 @@ tools/shot.sh out.png --europe --auto --gf 20000             # screenshot in a v
 tools/ui_smoke.sh                 # click through menu → build → road with xdotool
 RR_FUZZ_RATE=100 RR_FUZZ_SEEDS=30 cargo test -p rr-ai --release --test fuzz
 ```
+
+Comments often cite a review finding, as "(QA round 8, #9)": see [Architecture §8](docs/ARCHITECTURE.md#8-cross-cutting) for what those are.
 
 Docs: [Architecture](docs/ARCHITECTURE.md) · [Art](docs/ART.md) · [Map format](docs/MAPFORMAT.md) · [Modding](docs/MODDING.md) · [The Roman campaign](docs/CAMPAIGN-ROME.md) · [The German handbook](manual/README.md)
 

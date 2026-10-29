@@ -128,6 +128,9 @@ pub struct Audio {
     pub music_volume: f32,
     pub sfx_volume: f32,
     pub ambience: f32,
+    /// How hard a gust blows over the view's middle now (0..1): the wind in the trees swells
+    /// with it, as the trees bend on the screen.
+    pub gust: f32,
     /// The music makes room under a jingle or the alarm until then (sound designer #2).
     duck_until: Option<Instant>,
     /// The music's duck level now (eased toward 0.5 under a jingle, 1 otherwise).
@@ -487,6 +490,7 @@ impl Audio {
             music_volume: DEFAULT_MUSIC,
             sfx_volume: DEFAULT_SFX,
             ambience: DEFAULT_AMBIENCE,
+            gust: 0.0,
             muted: false,
             background: false,
             mute_in_background: true,
@@ -550,6 +554,16 @@ impl Audio {
             self.hold_after_fade = Some(Duration::from_secs(20));
         }
         self.play_panned(key, volume, 0.0);
+    }
+
+    /// What the map's drawn-only life makes heard this frame (a fish's splash, a duck): each at
+    /// its place, as loud as the game's own sounds there; and the gust over the view.
+    pub fn play_life(&mut self, sounds: &[(&'static str, MapCoord, f32)], gust: f32) {
+        self.gust = gust;
+        for (key, at, volume) in sounds {
+            let (v, pan) = (self.volume_at(*at) * volume, self.pan_at(*at));
+            self.play_panned(key, v, pan);
+        }
     }
 
     /// Play a sound; `pan` -1 is left, 1 is right.
@@ -695,7 +709,7 @@ impl Audio {
             ease(&self.waves, amb * mix[0]);
             ease(&self.brook, amb * mix[1]);
             ease(&self.birds, amb * mix[2]);
-            ease(&self.wind, amb * mix[3]);
+            ease(&self.wind, amb * mix[3] * (1.0 + 0.8 * self.gust));
             // now and then a bird in the trees, or a sheep in view, calls
             if now >= self.next_call {
                 self.pick = self.pick.wrapping_mul(1103515245).wrapping_add(12345);

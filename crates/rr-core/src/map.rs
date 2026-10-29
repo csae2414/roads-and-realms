@@ -77,7 +77,9 @@ impl MapData {
     /// size, layers of that size, headquarters and harbors on the map.
     pub fn validate(&self) -> Result<(), String> {
         let g = self.grid;
-        if g.width == 0 || g.height == 0 || !g.height.is_multiple_of(2) || g.width > MAX_SIDE || g.height > MAX_SIDE {
+        // two nodes across at least: nothing fits on a single column, and the editor's brush clamps
+        // and the building footprints both assume a neighbour (a hand-made 1×6 file used to load)
+        if g.width < 2 || g.height == 0 || !g.height.is_multiple_of(2) || g.width > MAX_SIDE || g.height > MAX_SIDE {
             return Err(format!("a map of {}×{} nodes can't be played", g.width, g.height));
         }
         if self.hq.len() > 7 || self.hq.iter().flatten().chain(self.harbors.iter()).any(|p| !g.contains(*p)) {
@@ -200,5 +202,13 @@ mod tests {
         let mut m = ok;
         m.resources[i] = Resource::Gold(20);
         assert!(m.validate().unwrap_err().starts_with("resource amount 20 at 3,4"));
+    }
+
+    /// A hand-made file can claim a single column of nodes; no building or road fits there, so it is
+    /// refused like a zero-sized map instead of reaching the editor.
+    #[test]
+    fn a_single_column_map_is_refused() {
+        assert_eq!(MapData::flat(1, 6, 8).validate().unwrap_err(), "a map of 1×6 nodes can't be played");
+        assert!(MapData::flat(2, 6, 8).validate().is_ok());
     }
 }

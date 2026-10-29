@@ -42,6 +42,8 @@ pub struct App {
     /// Since when each carrier has stood idle on its road (the frame), for the idle motions
     /// (owner, 2026-10-27; drawing only, not saved).
     pub idle: std::collections::HashMap<rr_sim::FigId, u32>,
+    /// What the map's look remembers: footprints, fought-over ground (`ambience::Life`).
+    pub life: crate::ambience::Life,
     /// RR_FRAMES=DIR:COUNT:FPS with RR_GALLERY: the gallery frame by frame into DIR, its clock
     /// stepped 1/FPS a frame (the site's animation page, `tools/animations.sh`).
     frames: Option<FrameRun>,
@@ -66,6 +68,8 @@ pub struct App {
     /// The building Go there went to, and when (a ring marks it for a while).
     pub mark: Option<(MapCoord, f64)>,
     pub pause_on_attack: bool,
+    /// The "calm map" option (`Settings::calm_map`).
+    pub calm_map: bool,
     /// A running LAN game.
     /// A LAN game (kept alive by its own thread while the window isn't drawn).
     pub net: Option<rr_net::LiveLockstep>,
@@ -193,6 +197,7 @@ impl App {
         let recorder = (args.gf == 0).then_some(recorder);
         // (the carriers' idle times kept through the run, so a screenshot shows their motions)
         let mut idle = std::collections::HashMap::new();
+        let mut life = crate::ambience::Life::default();
         if args.gf > 0 {
             let mut ais: Vec<rr_ai::Ai> = (0..sim.players().len() as u8).map(rr_ai::Ai::new).collect();
             for _ in 0..args.gf {
@@ -202,6 +207,7 @@ impl App {
                 }
                 sim.step(&cmds);
                 track_idle(&mut idle, &sim);
+                life.track(&sim, 0);
             }
         }
         let ais = make_ais(&args, sim.players().len());
@@ -227,6 +233,7 @@ impl App {
         app.in_menu = menu;
         app.recorder = recorder;
         app.idle = idle;
+        app.life = life;
         if app.args.screenshot.is_none() {
             let s = crate::settings::Settings::load();
             app.apply_settings(&s, &cc.egui_ctx);
@@ -277,6 +284,7 @@ impl App {
             road_hint: None,
             fog_of_war: false,
             idle: Default::default(),
+            life: Default::default(),
             frames: FrameRun::from_env(),
             editor: None,
             tested: None,
@@ -291,6 +299,7 @@ impl App {
             game_no: 0,
             mark: None,
             pause_on_attack: false,
+            calm_map: false,
             lobby: None,
             waiting: false,
             screen: Vec2::new(1280.0, 760.0),
@@ -1627,6 +1636,7 @@ impl App {
             reveal_all: self.sees_all(),
             scenery: self.editor.as_ref().is_none_or(|e| e.show_scenery),
             fog_cache: Default::default(),
+            life: Some(&self.life),
         }
     }
 
@@ -2061,6 +2071,7 @@ impl App {
         self.cam.ui_rescaled(old, s.ui_scale);
         self.fog_of_war = s.fog_of_war;
         self.pause_on_attack = s.pause_on_attack;
+        self.calm_map = s.calm_map;
         self.tips = s.tips;
         // on by default; switched off in the options or with --no-auto-road
         self.auto_road &= s.auto_road;
@@ -2090,6 +2101,7 @@ impl App {
         s.ui_scale = ctx.zoom_factor();
         s.fog_of_war = self.fog_of_war;
         s.pause_on_attack = self.pause_on_attack;
+        s.calm_map = self.calm_map;
         s.tips = self.tips;
         s.auto_road = self.auto_road;
         s.won_once |= self.won_once;
@@ -2289,6 +2301,9 @@ impl App {
         self.finish_save(true);
         self.game_no = self.game_no.wrapping_add(1);
         self.session = Session::default();
+        // (the map's remembered life is that game's: its footprints on a smaller loaded map
+        // crashed the game, eval of 2026-10-29)
+        self.life = crate::ambience::Life::default();
         self.menu.note.clear();
         // (a load under the briefing kept it, and the loaded game stood frozen; QA round 8, #1)
         self.ui.briefing = false;
@@ -2741,6 +2756,7 @@ impl eframe::App for App {
             ui::panels(self, ctx);
         }
         self.inset_jump(ctx);
+        let mut heard = (Vec::new(), 0.0);
         egui::CentralPanel::default().frame(egui::Frame::NONE).show(ctx, |ui| {
             let rect = ui.max_rect();
             let resp = ui.allocate_rect(rect, egui::Sense::click_and_drag());
@@ -2748,10 +2764,14 @@ impl eframe::App for App {
             let painter = ui.painter_at(rect);
             painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(10, 20, 40));
             track_idle(&mut self.idle, &self.sim);
-            let view = self.view(rect, time);
+            self.life.calm = self.calm_map;
+            self.life.track(&self.sim, self.session.favour);
+            // (RR_FRAMES: the map's clock is the film's too, so each frame is the same each run)
+            let view = self.view(rect, self.frames.as_ref().map_or(time, |f| f.idx as f32 / f.fps));
             if let Some(tex) = &self.tex {
                 let t = Instant::now();
                 view.draw(&painter, tex);
+                heard = crate::ambience::heard(&view);
                 view.draw_shots(&painter, &self.session.shots);
                 view.draw_priorities(&painter);
                 let open: Vec<MapCoord> =
@@ -2828,6 +2848,7 @@ impl eframe::App for App {
                 reveal_all: false,
                 scenery: true,
                 fog_cache: Default::default(),
+                life: None,
             }
             .pick(center);
             // half the view's width in nodes: the zoom decides how far one hears
@@ -2837,6 +2858,7 @@ impl eframe::App for App {
             a.set_war(at_war);
             a.speed = (SPEEDS[NORMAL_SPEED] / SPEEDS[self.speed]) as f32;
             a.fog_of_war = self.fog_of_war;
+            a.play_life(&heard.0, heard.1);
             a.update(&self.sim, self.player);
         }
         self.screenshot_logic(ctx);

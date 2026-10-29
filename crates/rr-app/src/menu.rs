@@ -242,7 +242,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 "Music: RandomMind and Woli34 (OpenGameArt, CC0). Ambience: Spring Spring, RandomMind (CC0).",
                 "Sounds: Kenney (kenney.nl, CC0).",
                 "Coastlines: Natural Earth (public domain).",
-                "Title painting and three buildings: made with Google Gemini (agy); all other art: our own code.",
+                "Title painting, the Roman buildings, the holy places and the ships: painted with an AI image tool from our own prompts; all other art: our own code.",
                 "Code: GPL-3.0-or-later. Art pack: CC-BY-SA-4.0.",
             ] {
                 ui.label(crate::i18n::tr(line));

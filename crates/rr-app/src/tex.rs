@@ -394,6 +394,8 @@ pub struct TerrainTextures {
     /// The Roman campaign's holy places from `assets/art/holy`, by god (`rr_world::HOLY_PLACES`):
     /// (texture, width, height, anchor x, anchor y), as the buildings.
     pub holy: HashMap<u8, (TextureHandle, f32, f32, f32, f32)>,
+    /// The ships' painted pictures from `assets/art/ships` by name (`ship_e`, `ship_ne_loaded`...).
+    pub ships: HashMap<String, ShipPicture>,
     /// Pre-rendered trees from `assets/art/trees` by kind (texture, width, height).
     pub trees: HashMap<&'static str, (TextureHandle, f32, f32)>,
     /// Small props and granite piles from `assets/art/props` by name (texture, width, height).
@@ -471,6 +473,50 @@ fn load_props(ctx: &egui::Context) -> HashMap<String, (TextureHandle, f32, f32)>
     out
 }
 
+/// A ship's picture: its texture, its size on the map, the middle of its waterline (the anchor,
+/// as a building's), and where its sail's four corners (top left, top right, bottom right,
+/// bottom left) and its masthead lie, as fractions of the picture, for the owner's colour drawn
+/// over it.
+pub struct ShipPicture {
+    pub tex: TextureHandle,
+    pub w: f32,
+    pub h: f32,
+    pub ax: f32,
+    pub ay: f32,
+    pub sail: [[f32; 2]; 4],
+    pub mast: [f32; 2],
+    /// The waterline's left and right ends (stern and bow, in the order the heading has them).
+    pub keel: [[f32; 2]; 2],
+}
+
+fn load_ships(ctx: &egui::Context) -> HashMap<String, ShipPicture> {
+    let mut out = HashMap::new();
+    let dir = rr_audio::assets_dir().join("art").join("ships");
+    let Ok(text) = std::fs::read_to_string(dir.join("manifest.json")) else { return out };
+    let Ok(m) = serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&text) else { return out };
+    for (key, e) in &m {
+        let Ok(img) = image::open(dir.join(format!("{key}.png"))) else { continue };
+        let img = img.to_rgba8();
+        let ci = ColorImage::from_rgba_unmultiplied([img.width() as usize, img.height() as usize], img.as_raw());
+        let opts = TextureOptions { mipmap_mode: Some(egui::TextureFilter::Linear), ..TextureOptions::LINEAR };
+        let f = |k: &str| e.get(k).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+        let pt = |v: Option<&serde_json::Value>| {
+            let a = v.and_then(|v| v.as_array());
+            let g = |i: usize| a.and_then(|a| a.get(i)).and_then(|x| x.as_f64()).unwrap_or(0.5) as f32;
+            [g(0), g(1)]
+        };
+        let corners = e.get("sail").and_then(|s| s.as_array());
+        let sail = std::array::from_fn(|i| pt(corners.and_then(|c| c.get(i))));
+        let ends = e.get("keel").and_then(|s| s.as_array());
+        let keel = std::array::from_fn(|i| pt(ends.and_then(|c| c.get(i))));
+        let tex = ctx.load_texture(format!("ship_{key}"), ci, opts);
+        let mast = pt(e.get("mast"));
+        let pic = ShipPicture { tex, w: f("w"), h: f("h"), ax: f("ax"), ay: f("ay"), sail, mast, keel };
+        out.insert(key.clone(), pic);
+    }
+    out
+}
+
 fn load_holy(ctx: &egui::Context) -> HashMap<u8, (TextureHandle, f32, f32, f32, f32)> {
     let mut out = HashMap::new();
     let dir = rr_audio::assets_dir().join("art").join("holy");
@@ -535,6 +581,7 @@ impl TerrainTextures {
             tex,
             buildings: load_buildings(ctx, landscape),
             holy: load_holy(ctx),
+            ships: load_ships(ctx),
             trees: load_trees(ctx),
             props: load_props(ctx),
             fields,

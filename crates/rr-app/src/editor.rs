@@ -295,7 +295,7 @@ impl Editor {
         let mountain = |q: MapCoord| world.terrains_around(q).iter().any(|t| rr_world::terrain::is_mountain(*t));
         // Raise and Lower shape the slopes around the brush too (one step per node)
         let reach = match self.tool {
-            Tool::Raise | Tool::Lower => (self.brush + 24).min(g.width.min(g.height) / 2 - 1),
+            Tool::Raise | Tool::Lower => (self.brush + 24).min((g.width.min(g.height) / 2).saturating_sub(1)),
             _ => self.brush,
         };
         let nodes: Vec<MapCoord> = g.within(p, reach).collect();

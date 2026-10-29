@@ -336,6 +336,34 @@ impl Sim {
                     self.ship_wake(s, SHIP_LOAD_GF);
                     return;
                 }
+                if !self.buildings.contains(to) {
+                    // destination razed on the way (a captured harbor is): the wares and people
+                    // were already taken out of the sending harbor, so they go back into the
+                    // ship owner's nearest standing stock instead of vanishing
+                    let (owner, at) = (self.ships[s].player, self.ships[s].pos);
+                    let g = self.world.grid();
+                    let nearest = self
+                        .buildings
+                        .iter()
+                        .filter(|(_, b)| b.player == owner && b.inventory.is_some())
+                        .min_by_key(|(id, b)| (g.distance(at, b.pos), id.index()))
+                        .map(|(id, _)| id);
+                    // no warehouse left at all: there is nowhere to put it, the load is gone
+                    if let Some(h) = nearest
+                        && let Some(inv) = self.buildings[h].inventory.as_mut()
+                    {
+                        for c in &load {
+                            match c {
+                                Cargo::Ware(w) => inv.wares[w.index()] += 1,
+                                Cargo::Person(j) => inv.jobs[j.index()] += 1,
+                            }
+                        }
+                    }
+                    self.ships[s].docked = None;
+                    self.ships[s].task = ShipTask::Idle;
+                    self.ship_find_harbor(s);
+                    return;
+                }
                 if let Some(inv) = self.buildings.get_mut(to).and_then(|b| b.inventory.as_mut()) {
                     for c in &load {
                         match c {
@@ -1120,5 +1148,47 @@ impl Sim {
         site: Site,
     ) -> BuildingId {
         self.insert_building_pub(player, BuildingType::Harbor, spot, flag, BState::Site(site))
+    }
+}
+
+#[cfg(test)]
+mod refund_tests {
+    use super::*;
+    use crate::{GameSetup, PlayerSetup};
+    use rr_core::MapData;
+    use rr_rules::Rules;
+    use std::sync::Arc;
+
+    /// A flat 64x64 meadow with two HQs (the integration tests' setup).
+    fn two_players() -> Sim {
+        let mut m = MapData::flat(64, 64, 8); // meadow
+        m.hq = vec![Some(MapCoord::new(20, 20)), Some(MapCoord::new(44, 40))];
+        let setup = GameSetup { seed: 42, players: vec![PlayerSetup::default(); 2], ..Default::default() };
+        Sim::new(Arc::new(Rules::classic()), &m, &setup).expect("setup")
+    }
+
+    /// A ship arriving at a destination harbor that was razed on the way: the wares were
+    /// already taken out of the sending harbor and vanished with the destination; they must
+    /// go back into the owner's nearest stock.
+    #[test]
+    fn a_razed_destination_gives_its_cargo_back() {
+        let mut sim = two_players();
+        let gone = sim.players[1].hq.unwrap();
+        // a capture razes the harbor: its id is dead
+        sim.buildings.remove(gone);
+        let before = sim.player_inventory(0).ware(Ware::Boards);
+        let s = sim.ships.insert(Ship {
+            player: 0,
+            pos: MapCoord::new(20, 20),
+            sea: 0,
+            motion: Motion::Idle,
+            path: vec![],
+            docked: None,
+            task: ShipTask::Cargo { to: gone, load: vec![Cargo::Ware(Ware::Boards); 3] },
+            ev: None,
+        });
+        sim.ship_event(s);
+        assert_eq!(sim.player_inventory(0).ware(Ware::Boards), before + 3, "the cargo vanished");
+        assert_eq!(sim.ships[s].task, ShipTask::Idle);
     }
 }

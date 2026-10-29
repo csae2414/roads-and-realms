@@ -1857,7 +1857,8 @@ fn spare_of(warehouses: impl IntoIterator<Item = (usize, usize)>) -> usize {
 #[cfg(test)]
 mod departure_tests {
     /// Veteran round 11, #4: every hold the AI keeps against the original is listed in
-    /// docs/DEPARTURES.md (a working copy's document: skipped where it isn't).
+    /// docs/DEPARTURES.md, a working note kept out of the public repository (docs/ARCHITECTURE.md
+    /// §8): the test skips where the file isn't there.
     #[test]
     fn the_holds_are_written_down() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/DEPARTURES.md");

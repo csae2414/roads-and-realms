@@ -72,6 +72,10 @@ jobs:
     # (a fixed image: ubuntu-latest moves to Ubuntu 26 from October 2026)
     runs-on: ubuntu-24.04
     steps:
+      # (only the release notes: docs/releases/<tag>.md)
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: docs/releases
       - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
@@ -79,5 +83,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # the notes written for this version, else GitHub's list of the changes
+          notes="docs/releases/$GITHUB_REF_NAME.md"
+          if [ -f "$notes" ]; then how=(--notes-file "$notes"); else how=(--generate-notes); fi
           gh release create "$GITHUB_REF_NAME" roads-and-realms-*.tar.gz roads-and-realms-*.zip --repo "$GITHUB_REPOSITORY" \
-            --title "Roads & Realms $GITHUB_REF_NAME" --generate-notes
+            --title "Roads & Realms $GITHUB_REF_NAME" "${how[@]}"

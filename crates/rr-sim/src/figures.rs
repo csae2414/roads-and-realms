@@ -831,12 +831,18 @@ impl Sim {
         };
         let step = self.figures[f].step;
         let len = r.len();
+        // A hand-made save can carry a carrier index past the end of a road that was shortened
+        // since (splitting a road truncates the first half). The steps below index `dirs[pos]`
+        // or `dirs[pos - 1]`, so the index is kept inside the road and the figure is sent to the
+        // repair below, which puts it back on the node it really stands on.
+        let indexed = pos <= len;
+        let pos = pos.min(len);
         let g = self.world.grid();
         let nodes = r.nodes(g);
         let here = self.figures[f].pos;
         if nodes.get(pos) != Some(&here) && !matches!(step, Step::CIntoBuilding(_)) {
             // not on the road (still arriving) - should not happen after `Go`; walk to the road
-            if step == Step::Go && here == nodes[len / 2] {
+            if indexed && step == Step::Go && here == nodes[len / 2] {
                 // fallthrough below
             } else if let Some(i) = nodes.iter().position(|q| *q == here) {
                 self.figures[f].kind = FigKind::Carrier { road, pos: i };
@@ -2072,4 +2078,52 @@ pub(crate) struct PathScratch {
     cost: Vec<u32>,
     came: Vec<Option<(usize, Direction)>>,
     search: u32,
+}
+
+#[cfg(test)]
+mod carrier_index_tests {
+    use super::*;
+    use crate::{Cmd, GameSetup, PlayerCommand, PlayerSetup};
+    use rr_core::MapData;
+    use rr_rules::Rules;
+    use std::sync::Arc;
+
+    /// A flat 64x64 meadow, one HQ, and a four-step road with its carrier waiting in the middle.
+    fn road_with_carrier() -> (Sim, RoadId) {
+        let mut m = MapData::flat(64, 64, 8); // meadow
+        m.hq = vec![Some(MapCoord::new(20, 20))];
+        let setup = GameSetup { seed: 42, players: vec![PlayerSetup::default()], ..Default::default() };
+        let mut sim = Sim::new(Arc::new(Rules::classic()), &m, &setup).expect("setup");
+        let a = sim.world.grid().walk(MapCoord::new(20, 20), Direction::SE, 1);
+        let dirs = vec![Direction::E, Direction::E, Direction::E, Direction::E];
+        sim.step(&[PlayerCommand { player: 0, cmd: Cmd::BuildRoad { from: a, dirs } }]);
+        let end = sim.world.grid().walk(a, Direction::E, 4);
+        let r = sim.road_between(a, end).expect("the road was not built");
+        for _ in 0..1000 {
+            if sim.roads[r].carrier.is_some() {
+                return (sim, r);
+            }
+            sim.step(&[]);
+        }
+        panic!("no carrier came to the road");
+    }
+
+    /// A hand-made save can carry a carrier index past the end of a road that was shortened
+    /// since (splitting a road truncates the first half). A figure standing on the middle node
+    /// with such an index walked to `dirs[pos - 1]`, out of bounds, and the game died.
+    #[test]
+    fn a_carrier_index_past_the_roads_end_cannot_crash_the_game() {
+        let (mut sim, r) = road_with_carrier();
+        let f = sim.roads[r].carrier.expect("carrier");
+        let len = sim.roads[r].len();
+        let mid = sim.roads[r].nodes(sim.world.grid())[len / 2];
+        assert_eq!(sim.figures[f].pos, mid, "the carrier waits in the middle");
+        sim.figures[f].step = Step::Go;
+        sim.figures[f].kind = FigKind::Carrier { road: r, pos: 500 };
+        sim.figure_event(f); // used to panic here
+        if let FigKind::Carrier { road, pos } = sim.figures[f].kind {
+            assert!(pos <= sim.roads[road].len(), "the index stayed past the road's end: {pos}");
+        }
+        assert!(sim.validate().is_ok(), "the game no longer validates");
+    }
 }

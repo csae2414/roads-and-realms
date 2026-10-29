@@ -670,7 +670,7 @@ pub struct Sim {
 pub const SAVE_VERSION: u32 = 17;
 /// Raise on any change to the rules of play that doesn't change the save format (network games
 /// must run the same simulation everywhere).
-pub const SIM_VERSION: u32 = 56;
+pub const SIM_VERSION: u32 = 57;
 /// Most soldiers of one rank a warehouse can hold in reserve.
 pub const MAX_RESERVE: u8 = 20;
 const SAVE_MAGIC: &[u8; 8] = b"RRSAVE\0\0";
@@ -834,7 +834,20 @@ impl Sim {
         if !self.world.layers_ok() || self.road_nodes.len() != g.len() || self.vis.iter().any(|v| v.len() != g.len()) {
             return Err("map layers of the wrong size");
         }
+        // The owner layer stores player + 1 and `load` counts the land per player right after
+        // this gate, so a byte above the player count (a hand-made save) would index past `owned`.
+        if !self.world.owners_below(n) {
+            return Err("land owned by a missing player");
+        }
         let player_ok = |p: PlayerId| (p as usize) < n;
+        for p in self.players.iter() {
+            // An entry above the scale indexes past the ranks in `choose_soldier`: the command
+            // clamps on set, but a hand-made save can carry anything, and the guardhouse would
+            // crash the frame an enemy soldier walks near it.
+            if p.settings.military.iter().zip(crate::MILITARY_SCALE).any(|(v, max)| *v > max) {
+                return Err("a military setting out of range");
+            }
+        }
         for (_, fl) in self.flags.iter() {
             if !player_ok(fl.player) || !g.contains(fl.pos) {
                 return Err("a flag of a missing player or off the map");
@@ -857,10 +870,18 @@ impl Sim {
             }
         }
         for (i, r) in self.road_nodes.iter().enumerate() {
-            if let Some(r) = r
-                && (!self.roads.contains(*r) || !self.roads[*r].nodes(g).contains(&g.coord(i)))
-            {
-                return Err("the road map disagrees with the roads");
+            if let Some(r) = r {
+                // The mark must be an interior node, not one of the road's two end flags: a flag
+                // placed on an end later splits the road there, and the split reads the road's
+                // directions past both ends (`split_road`). `contains` first so a missing road
+                // is never indexed; `get` so a two-node road (no interior) reads as no match.
+                let interior = self.roads.contains(*r) && {
+                    let nodes = self.roads[*r].nodes(g);
+                    nodes.get(1..nodes.len() - 1).is_some_and(|mid| mid.contains(&g.coord(i)))
+                };
+                if !interior {
+                    return Err("the road map disagrees with the roads");
+                }
             }
         }
         for (_, b) in self.buildings.iter() {
@@ -1445,5 +1466,66 @@ impl Sim {
             let r = &self.roads[*r];
             (r.from == fa && r.to == fb) || (r.from == fb && r.to == fa)
         })
+    }
+}
+
+#[cfg(test)]
+mod load_tests {
+    use super::*;
+    use rr_core::Direction::*;
+
+    /// A flat 64x64 meadow with one HQ at (20, 20), the way the integration tests build one.
+    fn new_game() -> Sim {
+        let mut m = MapData::flat(64, 64, 8);
+        m.hq = vec![Some(MapCoord::new(20, 20))];
+        let setup = GameSetup { seed: 42, players: vec![PlayerSetup::default()], ..Default::default() };
+        Sim::new(Arc::new(Rules::classic()), &m, &setup).unwrap()
+    }
+
+    /// A save that marked a road's end flag in the road map passed `validate`, then a flag built
+    /// on that end split the road there and `split_road` read its directions past both ends.
+    #[test]
+    fn a_road_mark_must_be_on_an_interior_node() {
+        let mut sim = new_game();
+        let g = sim.world().grid();
+        let a = g.walk(MapCoord::new(20, 20), SE, 1);
+        sim.step(&[PlayerCommand { player: 0, cmd: Cmd::BuildRoad { from: a, dirs: vec![E, E, E, E] } }]);
+        let end = g.walk(a, E, 4);
+        let r = sim.road_between(a, end).unwrap();
+        // an untouched game, with every honest interior mark, still loads
+        assert!(sim.validate().is_ok(), "untouched game refused: {:?}", sim.validate());
+        assert_eq!(sim.road_nodes[g.index(g.walk(a, E, 2))], Some(r), "the middle node is marked");
+        // marking one end flag is refused
+        sim.road_nodes[g.index(a)] = Some(r);
+        assert!(sim.validate().is_err(), "a mark on the start flag was accepted");
+        // ... and so is the other end
+        sim.road_nodes[g.index(a)] = None;
+        sim.road_nodes[g.index(end)] = Some(r);
+        assert!(sim.validate().is_err(), "a mark on the end flag was accepted");
+    }
+
+    /// A military setting above the scale passed `validate`, then `choose_soldier` indexed past
+    /// the ranks it held and a guardhouse crashed the frame an enemy soldier walked near it.
+    #[test]
+    fn a_military_setting_must_be_within_range() {
+        let mut sim = new_game();
+        assert!(sim.validate().is_ok(), "untouched game refused: {:?}", sim.validate());
+        sim.players[0].settings.military[1] = 200;
+        assert!(sim.validate().is_err(), "an out-of-range setting was accepted");
+        sim.players[0].settings.military[1] = 5;
+        assert!(sim.validate().is_ok(), "a back-in-range setting was still refused");
+    }
+
+    /// A save whose land was owned by player 200 passed `validate`, and `load` then counted the
+    /// land into `owned`, which is only as long as the players - index out of bounds.
+    #[test]
+    fn land_belonged_to_a_player_that_is_not_there() {
+        let sim = new_game();
+        let bytes = sim.save();
+        let mut d: SaveData = postcard::from_bytes(&bytes[SAVE_MAGIC.len()..]).unwrap();
+        assert!(d.world.owners_below(1), "an untouched game owns land by real players");
+        d.world.set_owner(MapCoord::new(30, 30), Some(200));
+        let bad = [SAVE_MAGIC.as_slice(), &postcard::to_stdvec(&d).unwrap()].concat();
+        assert!(Sim::load(Arc::new(Rules::classic()), &bad).is_err(), "land of player 200 was accepted");
     }
 }

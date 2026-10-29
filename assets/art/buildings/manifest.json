@@ -3,7 +3,7 @@
   "ax": 56.0,
   "ay": 93.74,
   "h": 109,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "armory_n1": {
@@ -59,7 +59,7 @@
   "ax": 56.0,
   "ay": 82.56,
   "h": 96,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "bakery_n1": {
@@ -115,7 +115,7 @@
   "ax": 42.0,
   "ay": 52.46,
   "h": 61,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "barracks_n1": {
@@ -171,7 +171,7 @@
   "ax": 56.0,
   "ay": 85.14,
   "h": 99,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "brewery_n1": {
@@ -227,7 +227,7 @@
   "ax": 56.0,
   "ay": 69.66,
   "h": 81,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "catapult_n1": {
@@ -283,7 +283,7 @@
   "ax": 42.0,
   "ay": 56.76,
   "h": 66,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "coalmine_n1": {
@@ -339,7 +339,7 @@
   "ax": 78.0,
   "ay": 75.68,
   "h": 88,
-  "source": "codex",
+  "source": "prompt",
   "w": 156
  },
  "donkeybreeder_n1": {
@@ -395,7 +395,7 @@
   "ax": 78.0,
   "ay": 70.52,
   "h": 82,
-  "source": "codex",
+  "source": "prompt",
   "w": 156
  },
  "farm_n1": {
@@ -451,7 +451,7 @@
   "ax": 42.0,
   "ay": 66.22,
   "h": 77,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "fishery_n1": {
@@ -507,7 +507,7 @@
   "ax": 42.0,
   "ay": 56.76,
   "h": 66,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "forester_n1": {
@@ -563,7 +563,7 @@
   "ax": 78.0,
   "ay": 102.34,
   "h": 119,
-  "source": "codex",
+  "source": "prompt",
   "w": 156
  },
  "fortress_n1": {
@@ -619,7 +619,7 @@
   "ax": 42.0,
   "ay": 55.04,
   "h": 64,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "goldmine_n1": {
@@ -675,7 +675,7 @@
   "ax": 42.0,
   "ay": 52.46,
   "h": 61,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "granitemine_n1": {
@@ -731,7 +731,7 @@
   "ax": 42.0,
   "ay": 96.32,
   "h": 112,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "guardhouse_n1": {
@@ -787,7 +787,7 @@
   "ax": 78.0,
   "ay": 86.86,
   "h": 101,
-  "source": "codex",
+  "source": "prompt",
   "w": 156
  },
  "harbor_n1": {
@@ -843,7 +843,7 @@
   "ax": 78.0,
   "ay": 104.92,
   "h": 122,
-  "source": "agy",
+  "source": "prompt",
   "w": 156
  },
  "headquarters_n1": {
@@ -899,7 +899,7 @@
   "ax": 42.0,
   "ay": 62.78,
   "h": 73,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "hunter_n1": {
@@ -955,7 +955,7 @@
   "ax": 42.0,
   "ay": 53.32,
   "h": 62,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "ironmine_n1": {
@@ -1011,7 +1011,7 @@
   "ax": 56.0,
   "ay": 89.44,
   "h": 104,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "ironsmelter_n1": {
@@ -1067,7 +1067,7 @@
   "ax": 42.0,
   "ay": 172.85999999999999,
   "h": 201,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "lookouttower_n1": {
@@ -1123,7 +1123,7 @@
   "ax": 56.0,
   "ay": 84.28,
   "h": 98,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "metalworks_n1": {
@@ -1179,7 +1179,7 @@
   "ax": 56.0,
   "ay": 145.34,
   "h": 169,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "mill_n1": {
@@ -1235,7 +1235,7 @@
   "ax": 56.0,
   "ay": 79.12,
   "h": 92,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "mint_n1": {
@@ -1291,7 +1291,7 @@
   "ax": 78.0,
   "ay": 74.82,
   "h": 87,
-  "source": "codex",
+  "source": "prompt",
   "w": 156
  },
  "pigfarm_n1": {
@@ -1347,7 +1347,7 @@
   "ax": 42.0,
   "ay": 55.9,
   "h": 65,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "quarry_n1": {
@@ -1403,7 +1403,7 @@
   "ax": 56.0,
   "ay": 67.08,
   "h": 78,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "sawmill_n1": {
@@ -1459,7 +1459,7 @@
   "ax": 56.0,
   "ay": 61.92,
   "h": 72,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "shipyard_n1": {
@@ -1515,7 +1515,7 @@
   "ax": 56.0,
   "ay": 88.58,
   "h": 103,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "slaughterhouse_n1": {
@@ -1571,7 +1571,7 @@
   "ax": 56.0,
   "ay": 65.36,
   "h": 76,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "storehouse_n1": {
@@ -1627,7 +1627,7 @@
   "ax": 56.0,
   "ay": 146.2,
   "h": 170,
-  "source": "codex",
+  "source": "prompt",
   "w": 112
  },
  "watchtower_n1": {
@@ -1683,7 +1683,7 @@
   "ax": 42.0,
   "ay": 83.42,
   "h": 97,
-  "source": "codex",
+  "source": "prompt",
   "w": 84
  },
  "well_n1": {
@@ -1739,7 +1739,7 @@
   "ax": 42.0,
   "ay": 60.2,
   "h": 70,
-  "source": "agy",
+  "source": "prompt",
   "w": 84
  },
  "woodcutter_n1": {

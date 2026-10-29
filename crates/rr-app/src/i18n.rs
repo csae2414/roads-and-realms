@@ -1339,6 +1339,7 @@ const DE: &[(&str, &str)] = &[
     ("Fullscreen", "Vollbild"),
     ("Mute", "Stumm"),
     ("Pause when attacked", "Bei Angriff anhalten"),
+    ("Calm map (no swaying, birds or sparkles)", "Ruhige Karte (kein Wiegen, keine Vögel, kein Glitzern)"),
     ("The scout keeps watch: the tower sees far around.", "Der Späher hält Wache: Der Turm sieht weit umher."),
     (
         "Works little (under 25%): too few wares, or its work is far away.",
@@ -2107,8 +2108,8 @@ const DE: &[(&str, &str)] = &[
     ("Sounds: Kenney (kenney.nl, CC0).", "Geräusche: Kenney (kenney.nl, CC0)."),
     ("Coastlines: Natural Earth (public domain).", "Küstenlinien: Natural Earth (gemeinfrei)."),
     (
-        "Title painting and three buildings: made with Google Gemini (agy); all other art: our own code.",
-        "Titelbild und drei Gebäude: mit Google Gemini (agy) erstellt; alle übrige Grafik: unser eigener Code.",
+        "Title painting, the Roman buildings, the holy places and the ships: painted with an AI image tool from our own prompts; all other art: our own code.",
+        "Titelbild, die römischen Gebäude, die heiligen Stätten und die Schiffe: mit einem KI-Bildwerkzeug aus eigenen Textvorgaben gemalt; alle übrige Grafik: unser eigener Code.",
     ),
     ("Code: GPL-3.0-or-later. Art pack: CC-BY-SA-4.0.", "Code: GPL-3.0-or-later. Grafikpaket: CC-BY-SA-4.0."),
     (

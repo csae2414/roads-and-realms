@@ -1074,7 +1074,12 @@ impl Sim {
 
     /// The player's warehouses, the castle first, then by id (deterministic).
     fn warehouses_of(&self, player: PlayerId) -> Vec<BuildingId> {
-        let hq = self.players[player as usize].hq;
+        // a captured castle is razed and `Player::hq` keeps its dead id (as `Sim::hq_pos` says);
+        // cmd_offer and cmd_bless index what this returns, so a player who lost their castle but
+        // still holds a holy place crashed the game by worshipping
+        let hq = self.players[player as usize].hq.filter(|h| {
+            self.buildings.get(*h).is_some_and(|b| b.player == player && b.kind == BuildingType::Headquarters)
+        });
         let mut out: Vec<BuildingId> = hq.into_iter().collect();
         out.extend(
             self.buildings
@@ -1391,5 +1396,42 @@ mod frontier_tests {
         assert_eq!(frontier_class(29, gh, (12, Some(9))), 0);
         // an enemy headquarters sends no attackers
         assert_eq!(frontier_class(24, gh, (9, None)), 0);
+    }
+}
+
+#[cfg(test)]
+mod warehouse_tests {
+    use crate::{GameSetup, PlayerSetup, Sim};
+    use rr_core::{MapCoord, MapData};
+    use rr_rules::Rules;
+    use std::sync::Arc;
+
+    /// A flat 64x64 meadow with two HQs (the integration tests' setup).
+    fn two_players() -> Sim {
+        let mut m = MapData::flat(64, 64, 8); // meadow
+        m.hq = vec![Some(MapCoord::new(20, 20)), Some(MapCoord::new(44, 40))];
+        let setup = GameSetup { seed: 42, players: vec![PlayerSetup::default(); 2], ..Default::default() };
+        Sim::new(Arc::new(Rules::classic()), &m, &setup).expect("setup")
+    }
+
+    /// Worship after a lost castle: `Player::hq` keeps the id of the razed headquarters and
+    /// `warehouses_of` returned it, so `cmd_offer` and `cmd_bless` indexed a dead id and
+    /// crashed the game.
+    #[test]
+    fn the_lost_castle_is_no_warehouse() {
+        let mut sim = two_players();
+        let hq = sim.players[0].hq.unwrap();
+        // while it stands, the castle is the first warehouse
+        assert_eq!(sim.warehouses_of(0), vec![hq]);
+        // a capture razes the castle; `Player::hq` keeps the dead id
+        sim.buildings.remove(hq);
+        // with the castle gone and nothing else built there is no warehouse left; whatever
+        // comes back must stand and be ours
+        let list = sim.warehouses_of(0);
+        assert!(list.is_empty(), "the dead castle came back: {list:?}");
+        for id in list {
+            assert!(sim.buildings.contains(id), "{id:?} is gone");
+            assert_eq!(sim.buildings[id].player, 0, "{id:?} is not ours");
+        }
     }
 }
