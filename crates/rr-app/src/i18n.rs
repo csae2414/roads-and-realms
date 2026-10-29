@@ -1468,8 +1468,8 @@ const DE: &[(&str, &str)] = &[
     ("Geologists found here:", "Geologen fanden hier:"),
     ("Near trees: Space shows where buildings fit.", "In der Nähe von Bäumen: Leertaste zeigt, wo Gebäude passen."),
     (
-        "Next to the woodcutters, away from the land you still want to build on.",
-        "Neben den Holzfällern, abseits vom Land, auf dem du noch bauen willst.",
+        "Next to the woodcutters, away from the land you still want to build on: without one the woods run out.",
+        "Neben den Holzfällern, abseits vom Land, auf dem du noch bauen willst: ohne ihn geht der Wald aus.",
     ),
     ("Next to grey rocks.", "Neben grauen Felsen."),
     (
@@ -1853,8 +1853,8 @@ const DE: &[(&str, &str)] = &[
         "Dieser Gegner hält Frieden, solange du es tust. Ein Angriff beendet ihn, auch mit seinen Verbündeten.",
     ),
     (
-        "A quiet valley, and one neighbour: Aldric of the Marches. Here you learn how a realm grows: woodcutters and a quarry, a sawmill, roads that carry everything, guardhouses that push the border out, and at last soldiers who take a castle.\n\nAldric keeps the peace as long as you do: nothing here is a race. Follow the First steps at the top right, and attack when your army is ready.",
-        "Ein stilles Tal und ein Nachbar: Aldric aus der Mark. Hier lernst du, wie ein Reich wächst: Holzfäller und ein Steinbruch, ein Sägewerk, Straßen, die alles tragen, Wachstuben, die die Grenze hinausschieben, und zuletzt Soldaten, die eine Burg einnehmen.\n\nAldric hält Frieden, solange du es tust: Hier drängt nichts. Folge den Ersten Schritten oben rechts und greife an, wenn dein Heer bereit ist.",
+        "A quiet valley, and one neighbour: Aldric of the Marches. Here you learn how a realm grows: woodcutters and a quarry, a sawmill, roads that carry everything, guardhouses that push the border out, and at last soldiers who take a castle.\n\nOne thing above all: woodcutters fell trees faster than they grow back. Build a forester next to them early, or the woods run out and with them the boards every building needs.\n\nAldric keeps the peace as long as you do: nothing here is a race. Follow the First steps at the top right, and attack when your army is ready.",
+        "Ein stilles Tal und ein Nachbar: Aldric aus der Mark. Hier lernst du, wie ein Reich wächst: Holzfäller und ein Steinbruch, ein Sägewerk, Straßen, die alles tragen, Wachstuben, die die Grenze hinausschieben, und zuletzt Soldaten, die eine Burg einnehmen.\n\nVor allem eines: Holzfäller schlagen Bäume schneller, als sie nachwachsen. Baue früh einen Förster neben sie, sonst geht der Wald aus und mit ihm die Bretter, die jedes Gebäude braucht.\n\nAldric hält Frieden, solange du es tust: Hier drängt nichts. Folge den Ersten Schritten oben rechts und greife an, wenn dein Heer bereit ist.",
     ),
     ("Goal: take the castle of Aldric of the Marches.", "Ziel: Nimm die Burg von Aldric aus der Mark ein."),
     (

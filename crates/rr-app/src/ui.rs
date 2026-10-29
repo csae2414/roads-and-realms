@@ -1484,7 +1484,9 @@ fn action_window(app: &mut App, ctx: &egui::Context) {
 fn first_step_hint(what: &str) -> Option<&'static str> {
     Some(match what {
         "Two woodcutters" => "Near trees: Space shows where buildings fit.",
-        "A forester" => "Next to the woodcutters, away from the land you still want to build on.",
+        "A forester" => {
+            "Next to the woodcutters, away from the land you still want to build on: without one the woods run out."
+        }
         "A quarry" => "Next to grey rocks.",
         "A sawmill" => "A medium spot (the bigger house marker): it turns wood into boards.",
         "Three military buildings" => "At the edge of your land: each one makes it bigger and guards it.",

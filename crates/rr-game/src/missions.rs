@@ -91,7 +91,7 @@ pub const MISSIONS: [Mission; 6] = [
     Mission {
         key: "first",
         title: "The first valley",
-        briefing: "A quiet valley, and one neighbour: Aldric of the Marches. Here you learn how a realm grows: woodcutters and a quarry, a sawmill, roads that carry everything, guardhouses that push the border out, and at last soldiers who take a castle.\n\nAldric keeps the peace as long as you do: nothing here is a race. Follow the First steps at the top right, and attack when your army is ready.",
+        briefing: "A quiet valley, and one neighbour: Aldric of the Marches. Here you learn how a realm grows: woodcutters and a quarry, a sawmill, roads that carry everything, guardhouses that push the border out, and at last soldiers who take a castle.\n\nOne thing above all: woodcutters fell trees faster than they grow back. Build a forester next to them early, or the woods run out and with them the boards every building needs.\n\nAldric keeps the peace as long as you do: nothing here is a race. Follow the First steps at the top right, and attack when your army is ready.",
         goal: "Goal: take the castle of Aldric of the Marches.",
         objective: Objective::DefeatRival(1),
         // (at peace until you attack: you can't lose while you learn, and the first attack
