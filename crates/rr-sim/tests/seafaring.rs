@@ -399,8 +399,9 @@ fn neighbour_islands() -> (Sim, MapCoord, MapCoord) {
 /// Attacks from the sea (owner, 2026-10-27; RTTR sea attacks): soldiers from a post near our
 /// harbor board a ship, land at the harbor spot by the rival's castle across the water, take it,
 /// and sail home.
-#[test]
-fn soldiers_attack_across_the_sea_and_sail_home() {
+/// Ready to attack the rival's island by sea: (sim, our harbor's spot, the guardhouse by it,
+/// the rival's castle).
+fn sea_attack_ready() -> (Sim, MapCoord, rr_sim::BuildingId, MapCoord) {
     let (mut sim, a, b) = neighbour_islands();
     // strong soldiers at home, one private at the rival's castle
     sim.debug_add_job(0, rr_rules::Job::General, 6);
@@ -459,6 +460,13 @@ fn soldiers_attack_across_the_sea_and_sail_home() {
     );
     assert!(sim.sea_attack_plan(0, t).is_some(), "an attack by sea is possible");
     assert!(sim.attackers_for(0, castle) > 0);
+    let _ = (ha, b);
+    (sim, a, gh, castle)
+}
+
+#[test]
+fn soldiers_attack_across_the_sea_and_sail_home() {
+    let (mut sim, _, gh, castle) = sea_attack_ready();
     ok(&mut sim, Cmd::Attack { target: castle, soldiers: 2, strong: true });
     // they land on the rival's island
     let island_b =
@@ -470,5 +478,162 @@ fn soldiers_attack_across_the_sea_and_sail_home() {
     run_until(&mut sim, 10_000, |s| s.building(gh).soldiers.len() >= 3 && !island_b(s))
         .unwrap_or_else(|| panic!("not home:\n{}", sim.dump_string()));
     assert!(sim.ships().iter().all(|(_, s)| s.task == rr_sim::ShipTask::Idle), "the ship free again");
-    let _ = (ha, b);
+}
+
+/// The eval's Far East soak: soldiers aboard a sea attack are in their harbor's keeping; when
+/// that harbor burned while they were out, a save made then would not load. They step ashore
+/// and go home, the ship is free.
+#[test]
+fn a_sea_attack_survives_its_harbor_burning() {
+    let (mut sim, a, _, castle) = sea_attack_ready();
+    ok(&mut sim, Cmd::Attack { target: castle, soldiers: 2, strong: true });
+    let under_way = |s: &Sim| {
+        s.ships()
+            .iter()
+            .any(|(_, x)| matches!(&x.task, rr_sim::ShipTask::SeaAttack { phase: 1, aboard, .. } if !aboard.is_empty()))
+    };
+    run_until(&mut sim, 6_000, under_way).unwrap_or_else(|| panic!("never sailed:\n{}", sim.dump_string()));
+    sim.debug_destroy_building(a);
+    sim.audit().expect("a save made now loads");
+    if run_until(&mut sim, 3_000, |s| s.audit().is_err()).is_some() {
+        panic!("broken later: {:?}", sim.audit());
+    }
+    assert!(sim.ships().iter().all(|(_, s)| s.task == rr_sim::ShipTask::Idle), "the ship free again");
+}
+
+/// The owner's game: geologists on the home island, none at the colony. Sent to a flag there,
+/// one comes by ship to the colony's harbor; sent again once landed, he walks to the flag.
+#[test]
+fn a_geologist_for_another_island_comes_by_ship() {
+    let (mut sim, _, hb, _, b) = colony();
+    // no hammer there: the colony can't make a geologist of a helper
+    sim.debug_take_ware_at(hb, Ware::Hammer, 99);
+    let job = rr_rules::Job::Geologist;
+    assert_eq!(sim.building(hb).inventory.as_ref().unwrap().job(job), 0);
+    let flag = sim.world().grid().neighbor(b, SE);
+    let out = sim.step(&[PlayerCommand { player: 0, cmd: Cmd::SendGeologist { flag } }]);
+    assert!(
+        out.events
+            .iter()
+            .any(|e| matches!(e, Event::CommandRejected { reason: rr_sim::RejectReason::ComingBySea, .. })),
+        "not told it comes by ship: {:?}",
+        out.events
+    );
+    run_until(&mut sim, 20_000, |s| s.building(hb).inventory.as_ref().unwrap().job(job) > 0)
+        .unwrap_or_else(|| panic!("no geologist landed:\n{}", sim.dump_string()));
+    ok(&mut sim, Cmd::SendGeologist { flag });
+    let on_b = |s: &Sim| s.figures().iter().any(|(_, f)| f.job == job && s.same_land(f.pos, b) && f.is_visible());
+    run_until(&mut sim, 600, on_b).expect("the geologist walks out on the colony's island");
+}
+
+/// A colony founded by expedition: (sim, our harbor, the colony's harbor, their spots).
+fn colony() -> (Sim, rr_sim::BuildingId, rr_sim::BuildingId, MapCoord, MapCoord) {
+    let (mut sim, a, b) = islands();
+    let ha = harbor_on_a(&mut sim, a);
+    let yard_at = yard_spot(&sim, a);
+    ok(&mut sim, Cmd::PlaceBuilding { at: yard_at, kind: B::Shipyard });
+    ok(&mut sim, Cmd::SetShipyardMode { at: yard_at, ships: true });
+    connect(&mut sim, yard_at);
+    sim.debug_add_ware(0, Ware::Boards, 30);
+    run_until(&mut sim, 40_000, |s| !s.ships().is_empty()).expect("ship");
+    ok(&mut sim, Cmd::StartExpedition { harbor: a });
+    run_until(&mut sim, 6000, |s| s.expedition_ready(ha)).expect("expedition ready");
+    ok(&mut sim, Cmd::SendExpedition { harbor: a, to: b });
+    run_until(&mut sim, 6000, |s| s.building_at(b).is_some()).expect("colony founded");
+    let hb = sim.building_at(b).unwrap();
+    run_until(&mut sim, 20_000, |s| s.building(hb).is_ready()).expect("colony harbor built");
+    (sim, ha, hb, a, b)
+}
+
+/// The owner's islands: "take in" at a colony's harbor fetches across the sea (nothing on its
+/// own island has it), and "move out" at a harbor ships its stock across when no warehouse on
+/// its roads takes it.
+#[test]
+fn warehouse_settings_reach_across_the_sea() {
+    use rr_sim::StockPolicy as P;
+    let (mut sim, ha, hb, _, b) = colony();
+    let stock = |s: &Sim, h, w: Ware| s.building(h).inventory.as_ref().unwrap().ware(w);
+    sim.debug_take_ware_at(hb, Ware::Sword, 99);
+    sim.debug_add_ware(0, Ware::Sword, 3);
+    let home_swords = |s: &Sim| {
+        s.buildings()
+            .iter()
+            .filter(|(id, _)| *id != hb)
+            .filter_map(|(_, x)| x.inventory.as_ref())
+            .map(|i| i.ware(Ware::Sword))
+            .sum::<u32>()
+    };
+    assert!(home_swords(&sim) > 0, "no swords at home to fetch");
+    ok(&mut sim, Cmd::SetStockPolicy { at: b, ware: Ware::Sword, policy: P::Collect });
+    run_until(&mut sim, 20_000, |s| stock(s, hb, Ware::Sword) > 0)
+        .unwrap_or_else(|| panic!("no sword shipped to the colony:\n{}", sim.dump_string()));
+    // and back: the colony's harbor moves its fish out; nothing on its island takes them
+    ok(&mut sim, Cmd::SetStockPolicy { at: b, ware: Ware::Sword, policy: P::Normal });
+    sim.debug_add_ware_at(hb, Ware::Fish, 3);
+    let before = stock(&sim, ha, Ware::Fish);
+    ok(&mut sim, Cmd::SetStockPolicy { at: b, ware: Ware::Fish, policy: P::MoveOut });
+    run_until(&mut sim, 20_000, |s| {
+        stock(s, hb, Ware::Fish) == 0 && s.building(ha).sea_incoming.iter().all(|x| *x == 0)
+    })
+    .unwrap_or_else(|| panic!("fish not moved out:\n{}", sim.dump_string()));
+    assert!(stock(&sim, ha, Ware::Fish) >= before, "fish lost on the way");
+}
+
+/// Two islands far apart (sight doesn't reach across), our castle on one, a rival's on the
+/// other, which it holds whole.
+fn far_islands() -> (Sim, MapCoord, MapCoord) {
+    let (sim, a, b) = islands();
+    let mut m = MapData::flat(64, 64, WATER);
+    let g = m.grid;
+    for (center, r) in [(c(16, 20), 9u16), (c(46, 42), 9u16)] {
+        for p in g.within(center, r) {
+            let i = g.index(p);
+            m.terrain_rsu[i] = MEADOW;
+            m.terrain_usd[i] = MEADOW;
+        }
+    }
+    drop(sim);
+    m.harbors = vec![a, b];
+    m.hq = vec![Some(c(16, 20)), Some(c(46, 42))];
+    let setup = GameSetup { seed: 7, players: vec![Default::default(), Default::default()], ..Default::default() };
+    (Sim::new(Arc::new(Rules::classic()), &m, &setup).unwrap(), a, b)
+}
+
+/// The owner: "if an enemy occupies the entire island and we share no border we need a way to
+/// attack". A rival's castle explored once but out of sight now may be attacked by sea; never
+/// seen, it may not.
+#[test]
+fn an_explored_island_out_of_sight_can_be_attacked_by_sea() {
+    let (mut sim, a, _) = far_islands();
+    ok(&mut sim, Cmd::SetMilitary { values: [10, 5, 5, 5, 8, 8, 8, 8] });
+    sim.debug_add_job(0, rr_rules::Job::General, 6);
+    let _ha = harbor_on_a(&mut sim, a);
+    let g = sim.world().grid();
+    let mut near: Vec<MapCoord> = g.within(a, 8).filter(|p| g.distance(*p, a) >= 4).collect();
+    near.sort_by_key(|p| (g.distance(*p, a), p.y, p.x));
+    let at = near
+        .into_iter()
+        .find(|p| {
+            sim.world().bq_for(*p, 0).allows(rr_world::Bq::Hut)
+                && !sim.military_building_near(*p, 0)
+                && sim.road_path(0, g.neighbor(*p, SE), walk(&sim, c(16, 20), SE, 1), &[]).is_some()
+        })
+        .expect("a guardhouse spot by the harbor");
+    ok(&mut sim, Cmd::PlaceBuilding { at, kind: B::Guardhouse });
+    connect(&mut sim, at);
+    let gh = sim.building_at(at).unwrap();
+    run_until(&mut sim, 30_000, |s| s.building(gh).soldiers.len() >= 3).expect("manned");
+    sim.debug_spawn_ship(0, a);
+    let castle = sim.building(sim.players()[1].hq.unwrap()).pos;
+    let t = sim.building_at(castle).unwrap();
+    assert_eq!(sim.visibility(0, castle), rr_sim::Visibility::Unexplored);
+    assert!(!sim.is_attackable(0, t), "never seen: not attackable");
+    sim.debug_explore(0, castle, 4);
+    assert_eq!(sim.visibility(0, castle), rr_sim::Visibility::Fog, "explored, out of sight");
+    assert!(sim.is_attackable(0, t), "explored: attackable by sea");
+    assert_eq!(sim.sea_attack_blocker(0, t), None);
+    ok(&mut sim, Cmd::Attack { target: castle, soldiers: 2, strong: true });
+    let landed =
+        |s: &Sim| s.figures().iter().any(|(_, f)| f.player == 0 && f.inside.is_none() && s.same_land(f.pos, castle));
+    run_until(&mut sim, 8_000, landed).unwrap_or_else(|| panic!("nobody landed:\n{}", sim.dump_string()));
 }

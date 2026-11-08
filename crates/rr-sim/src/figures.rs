@@ -1848,7 +1848,12 @@ impl Sim {
                 }
             }
         }
-        let (_, wh) = best.ok_or(crate::RejectReason::NotFound)?;
+        // none can walk there: from across the sea, one comes by ship to this coast's harbor
+        // (the owner's game: geologists on the home island, none on the colony's)
+        let Some((_, wh)) = best else {
+            let shipped = self.ship_specialist(player, fl, job);
+            return Err(if shipped { crate::RejectReason::ComingBySea } else { crate::RejectReason::NotFound });
+        };
         let rules = self.rules.clone();
         let inv = self.buildings[wh].inventory.as_mut().expect("warehouse");
         if inv.job(job) == 0 && inv.take_person(job, &rules) {

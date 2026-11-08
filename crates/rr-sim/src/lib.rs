@@ -24,7 +24,9 @@ pub use fog::Visibility;
 pub use military::{CATAPULT_RANGE, SoldierTask};
 pub use replay::Replay;
 pub use sched::Scheduler;
-pub use seafaring::{COLONY_KIT, Cargo, Expedition, SEA_ATTACK_DISTANCE, SHIP_CAPACITY, SeaAttackPlan, Ship, ShipTask};
+pub use seafaring::{
+    COLONY_KIT, Cargo, Expedition, SEA_ATTACK_DISTANCE, SHIP_CAPACITY, SeaAttackPlan, SeaBlocker, Ship, ShipTask,
+};
 pub use transport::{Flag, Road, RoadTrouble};
 
 use rr_core::{Arena, Direction, Gf, Id, MapCoord, MapData, StableHash, StableHasher};
@@ -340,6 +342,9 @@ pub enum RejectReason {
     BadRoad,
     NotFound,
     NotAllowed,
+    /// None on this coast: one comes by ship to its harbor, to be sent again from there once
+    /// landed (a geologist or scout for a flag on another island; last, so saves keep reading).
+    ComingBySea,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -670,7 +675,7 @@ pub struct Sim {
 pub const SAVE_VERSION: u32 = 17;
 /// Raise on any change to the rules of play that doesn't change the save format (network games
 /// must run the same simulation everywhere).
-pub const SIM_VERSION: u32 = 57;
+pub const SIM_VERSION: u32 = 58;
 /// Most soldiers of one rank a warehouse can hold in reserve.
 pub const MAX_RESERVE: u8 = 20;
 const SAVE_MAGIC: &[u8; 8] = b"RRSAVE\0\0";
@@ -1414,6 +1419,17 @@ impl Sim {
         }
     }
 
+    /// Test helper: `player` has explored the land within `r` of `at` (seen once, out of sight
+    /// now, as land a passing ship saw).
+    pub fn debug_explore(&mut self, player: PlayerId, at: MapCoord, r: u16) {
+        self.update_fog(true);
+        let g = self.world.grid();
+        for p in g.within(at, r) {
+            let v = &mut self.vis[player as usize][g.index(p)];
+            *v = (*v).max(1);
+        }
+    }
+
     /// Test helper: a ship of `player` at the coast of the harbor spot `spot`.
     pub fn debug_spawn_ship(&mut self, player: PlayerId, spot: MapCoord) {
         let coast = self.harbor_coast(spot).expect("a coast");
@@ -1424,6 +1440,13 @@ impl Sim {
     pub fn debug_take_ware_at(&mut self, b: BuildingId, w: Ware, n: u32) {
         if let Some(inv) = self.buildings.get_mut(b).and_then(|x| x.inventory.as_mut()) {
             inv.wares[w.index()] = inv.wares[w.index()].saturating_sub(n);
+        }
+    }
+
+    /// Test helper: add wares to the store of warehouse `b`.
+    pub fn debug_add_ware_at(&mut self, b: BuildingId, w: Ware, n: u32) {
+        if let Some(inv) = self.buildings.get_mut(b).and_then(|x| x.inventory.as_mut()) {
+            inv.wares[w.index()] += n;
         }
     }
 

@@ -225,10 +225,21 @@ impl Sim {
             rr_rules::BuildingType::Storehouse => false,
             k => self.rules.building(k).is_military() && tb.occupied,
         };
-        kind_ok
-            && tb.is_ready()
-            && !self.are_allies(tb.player, player)
-            && self.visibility(player, tb.pos) == crate::Visibility::Visible
+        kind_ok && tb.is_ready() && !self.are_allies(tb.player, player) && self.target_known(player, t)
+    }
+
+    /// Does `player` know the target well enough to attack it? In sight now, or, for an attack
+    /// by sea, explored once: the soldiers land at a harbor spot near it (the owner: an island
+    /// held whole by one rival, sharing no border, could not be attacked at all; ours). Attacks
+    /// over land keep RTTR's rule: posts that reach a target see it anyway.
+    fn target_known(&self, player: PlayerId, t: BuildingId) -> bool {
+        match self.visibility(player, self.buildings[t].pos) {
+            crate::Visibility::Visible => true,
+            crate::Visibility::Fog => {
+                self.attack_sources(player, t).is_empty() && self.sea_attack_plan(player, t).is_some()
+            }
+            crate::Visibility::Unexplored => false,
+        }
     }
 
     pub(crate) fn cmd_attack(

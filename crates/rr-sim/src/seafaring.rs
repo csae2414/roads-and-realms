@@ -83,6 +83,19 @@ pub enum ShipTask {
 const EXPLORE_STOPS: u8 = 3;
 pub const EXPLORE_SIGHT: u16 = 12;
 
+/// Why an attack by sea can't go (`Sim::sea_attack_blocker`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SeaBlocker {
+    /// No harbor spot on the target's island within reach of it to land at.
+    NoLanding,
+    /// None of our harbors on that sea, on another island.
+    NoHarbor,
+    /// No idle ship of ours on that sea.
+    NoShip,
+    /// No military building with soldiers near our harbor there.
+    NoPosts,
+}
+
 /// How an attack by sea would go: from our `harbor`, by `ship`, landing at `landing`, with
 /// soldiers from the posts `sources` (distance to the harbor, post).
 #[derive(Clone, Debug)]
@@ -517,6 +530,42 @@ impl Sim {
         None
     }
 
+    /// Why `player` can't attack `t` by sea (for the building's window), or None if it can: the
+    /// steps of `sea_attack_plan`, each one's failure told apart.
+    pub fn sea_attack_blocker(&self, player: PlayerId, t: BuildingId) -> Option<SeaBlocker> {
+        if self.sea_attack_plan(player, t).is_some() {
+            return None;
+        }
+        let g = self.world.grid();
+        let tb = self.buildings.get(t)?;
+        let goal = self.flags[tb.flag].pos;
+        let seas: Vec<u16> = self
+            .world
+            .harbor_spots()
+            .iter()
+            .filter(|l| g.distance(**l, tb.pos) <= SEA_ATTACK_DISTANCE && self.same_land(**l, goal))
+            .filter(|l| self.path_len_within(**l, goal, SEA_ATTACK_DISTANCE).is_some() || **l == tb.pos)
+            .filter_map(|l| self.harbor_sea(*l))
+            .collect();
+        if seas.is_empty() {
+            return Some(SeaBlocker::NoLanding);
+        }
+        let ours: Vec<BuildingId> = seas
+            .iter()
+            .flat_map(|sea| self.harbors_at(player, *sea))
+            .filter(|h| !self.same_land(self.buildings[*h].pos, goal))
+            .collect();
+        if ours.is_empty() {
+            return Some(SeaBlocker::NoHarbor);
+        }
+        let idle =
+            self.ships.iter().any(|(_, s)| s.player == player && seas.contains(&s.sea) && s.task == ShipTask::Idle);
+        if !idle {
+            return Some(SeaBlocker::NoShip);
+        }
+        Some(SeaBlocker::NoPosts)
+    }
+
     /// `sent` soldiers are on their way to board for an attack on `t`.
     pub(crate) fn start_sea_attack(&mut self, plan: &SeaAttackPlan, t: BuildingId, sent: u8) {
         let s = plan.ship;
@@ -671,6 +720,40 @@ impl Sim {
                 // home: everybody ashore, back to their posts
                 let at = self.buildings.get(harbor).map(|h| h.pos);
                 self.sea_attack_disembark(s, &aboard, at);
+            }
+        }
+    }
+
+    /// Harbor `id` is gone: the sea attacks that sailed from it report to another harbor of
+    /// ours on that sea, their soldiers aboard in its keeping; with none left, the soldiers
+    /// step ashore (where they boarded, or at the landing once under way) and go home.
+    pub(crate) fn sea_attack_harbor_lost(&mut self, id: BuildingId, player: PlayerId, pos: MapCoord) {
+        let ships: Vec<(ShipId, u8, MapCoord)> = self
+            .ships
+            .iter()
+            .filter_map(|(s, x)| match &x.task {
+                ShipTask::SeaAttack { harbor, phase, landing, .. } if *harbor == id => Some((s, *phase, *landing)),
+                _ => None,
+            })
+            .collect();
+        if ships.is_empty() {
+            return;
+        }
+        let other = self.harbor_sea(pos).and_then(|sea| self.harbors_at(player, sea).into_iter().find(|h| *h != id));
+        for (s, phase, landing) in ships {
+            let aboard = self.ships_aboard(s);
+            match other {
+                Some(h) if phase != 0 => {
+                    if let ShipTask::SeaAttack { harbor, .. } = &mut self.ships[s].task {
+                        *harbor = h;
+                    }
+                    for f in &aboard {
+                        if let Some(fig) = self.figures.get_mut(*f) {
+                            fig.inside = Some(h);
+                        }
+                    }
+                }
+                _ => self.sea_attack_disembark(s, &aboard, (phase != 0).then_some(landing)),
             }
         }
     }
@@ -934,6 +1017,134 @@ impl Sim {
             }
         }
         false
+    }
+}
+
+impl Sim {
+    /// A geologist or scout for flag `flag`, which none can walk to: one boards at a harbor
+    /// across the sea, taken from that harbor or from a warehouse on its roads, bound for the
+    /// harbor on the flag's roads (sent to the flag from there once landed). No standing order:
+    /// one is taken from its warehouse at once, the walk to the harbor left out, so nothing new
+    /// goes in the save. True if one is coming.
+    pub(crate) fn ship_specialist(&mut self, player: PlayerId, flag: crate::FlagId, job: Job) -> bool {
+        let Some(route) = self.overseas_route(player, flag) else { return false };
+        let i = idx(Cargo::Person(job));
+        if self.buildings[route.home].sea_incoming[i] > 0 {
+            return true; // one is on its way already
+        }
+        for &src in &route.sources {
+            let to_src = self.routes_to(self.buildings[src].flag);
+            let rules = self.rules.clone();
+            let from = std::iter::once(src).chain(
+                self.buildings
+                    .iter()
+                    .filter(|(id, b)| *id != src && b.player == player && b.is_ready() && b.inventory.is_some())
+                    .filter(|(_, b)| to_src.get(b.flag.index()).is_some_and(|r| r.0 != u32::MAX))
+                    .map(|(id, _)| id)
+                    .collect::<Vec<_>>(),
+            );
+            for wh in from.collect::<Vec<_>>() {
+                let inv = self.buildings[wh].inventory.as_mut().expect("warehouse");
+                if inv.can_supply(job, &rules) && inv.take_person(job, &rules) {
+                    self.buildings[src].ship_queue.push((Cargo::Person(job), route.home));
+                    self.buildings[route.home].sea_incoming[i] += 1;
+                    self.start_building_timer(src, 1);
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+
+impl Sim {
+    /// The warehouse settings across the sea, when nothing on the roads serves them: a
+    /// warehouse that takes `what` in (`collect`) gets it from a harbor across its sea (the
+    /// harbor's own stock first; else a warehouse on that harbor's roads sends one there to be
+    /// shipped); a harbor that moves `what` out, with no warehouse on its roads to take it,
+    /// ships it to a harbor across the sea that takes it. One per call, like on land; nothing
+    /// new goes in the save. True if something was set in motion.
+    pub(crate) fn stock_by_sea(&mut self, b: BuildingId, what: Cargo, collect: bool) -> bool {
+        use crate::StockPolicy as P;
+        let (player, flag) = (self.buildings[b].player, self.buildings[b].flag);
+        let policy = |x: &crate::Building| match what {
+            Cargo::Ware(w) => x.stock_policy.get(w.index()).copied().unwrap_or_default(),
+            Cargo::Person(j) => x.people_policy.get(j.index()).copied().unwrap_or_default(),
+        };
+        let has = |x: &crate::Building| {
+            x.inventory.as_ref().is_some_and(|i| match what {
+                Cargo::Ware(w) => i.ware(w) > 0,
+                Cargo::Person(j) => i.job(j) > 0,
+            })
+        };
+        let Some(route) = self.overseas_route(player, flag) else { return false };
+        let i = idx(what);
+        if !collect {
+            // only the harbor itself ships its stock away
+            if route.home != b || !has(&self.buildings[b]) {
+                return false;
+            }
+            let dest = route
+                .sources
+                .iter()
+                .filter(|h| !matches!(policy(&self.buildings[**h]), P::Stop | P::MoveOut))
+                .min_by_key(|h| (policy(&self.buildings[**h]) != P::Collect) as u8)
+                .copied();
+            let Some(dest) = dest else { return false };
+            self.unstock(b, what);
+            self.buildings[b].ship_queue.push((what, dest));
+            self.buildings[dest].sea_incoming[i] += 1;
+            self.start_building_timer(b, 1);
+            return true;
+        }
+        for &src in &route.sources {
+            if policy(&self.buildings[src]) == P::Collect {
+                continue;
+            }
+            if has(&self.buildings[src]) {
+                self.unstock(src, what);
+                self.buildings[src].ship_queue.push((what, route.home));
+                self.buildings[route.home].sea_incoming[i] += 1;
+                self.start_building_timer(src, 1);
+                return true;
+            }
+            // a warehouse on that harbor's roads sends one there
+            let routes = self.routes_to(self.buildings[src].flag);
+            let wh = self
+                .buildings
+                .iter()
+                .filter(|(id, x)| *id != src && x.player == player && x.is_ready())
+                .filter(|(_, x)| !matches!(policy(x), P::Collect) && has(x))
+                .filter_map(|(id, x)| {
+                    let d = routes.get(x.flag.index()).map_or(u32::MAX, |r| r.0);
+                    (d != u32::MAX).then_some((d, id.index(), id))
+                })
+                .min()
+                .map(|x| x.2);
+            if let Some(wh) = wh {
+                match what {
+                    Cargo::Ware(w) => {
+                        self.take_from_warehouse(wh, w, src);
+                    }
+                    Cargo::Person(j) => {
+                        let pos = self.buildings[src].pos;
+                        let f = self.spawn_from_warehouse(wh, j, FigKind::Home);
+                        self.figures[f].target = Some(pos);
+                    }
+                }
+                return true;
+            }
+        }
+        false
+    }
+
+    /// One `what` out of the stock of warehouse `b`.
+    fn unstock(&mut self, b: BuildingId, what: Cargo) {
+        let inv = self.buildings[b].inventory.as_mut().expect("warehouse");
+        match what {
+            Cargo::Ware(w) => inv.wares[w.index()] -= 1,
+            Cargo::Person(j) => inv.jobs[j.index()] -= 1,
+        }
     }
 }
 

@@ -1339,6 +1339,39 @@ const DE: &[(&str, &str)] = &[
     ("Fullscreen", "Vollbild"),
     ("Mute", "Stumm"),
     ("Pause when attacked", "Bei Angriff anhalten"),
+    ("Not attackable: nobody has moved in yet.", "Nicht angreifbar: Es ist noch niemand eingezogen."),
+    (
+        "A storehouse can't be attacked: take the military buildings around it.",
+        "Ein Lagerhaus kann man nicht angreifen: Nimm die Militärgebäude um es herum ein.",
+    ),
+    (
+        "Not attackable: none of your military buildings is near enough.",
+        "Nicht angreifbar: Keines deiner Militärgebäude ist nahe genug.",
+    ),
+    (
+        "Out of sight, and not by sea either: no harbor spot near it to land at. Get it in sight of your military buildings or a lookout tower.",
+        "Außer Sicht, und auch übers Meer nicht: Kein Hafenplatz in der Nähe, um zu landen. Bring es in Sicht deiner Militärgebäude oder eines Spähturms.",
+    ),
+    (
+        "Out of sight. By sea you would need a harbor of yours on the same sea, on another island.",
+        "Außer Sicht. Übers Meer bräuchtest du einen eigenen Hafen am selben Meer, auf einer anderen Insel.",
+    ),
+    (
+        "Out of sight. By sea you would need a free ship: all of yours are busy or none is built.",
+        "Außer Sicht. Übers Meer bräuchtest du ein freies Schiff: Alle sind unterwegs oder es gibt noch keines.",
+    ),
+    (
+        "Out of sight. By sea, soldiers sail from the military buildings near your harbor: build one there or send it soldiers.",
+        "Außer Sicht. Übers Meer fahren Soldaten von den Militärgebäuden bei deinem Hafen: Baue dort eines oder schicke ihm Soldaten.",
+    ),
+    (
+        "No geologist on this island: one comes by ship to its harbor. Send him again once he has landed.",
+        "Kein Geologe auf dieser Insel: Einer kommt mit dem Schiff zu ihrem Hafen. Schicke ihn noch einmal los, sobald er angelegt hat.",
+    ),
+    (
+        "No scout on this island: one comes by ship to its harbor. Send him again once he has landed.",
+        "Kein Späher auf dieser Insel: Einer kommt mit dem Schiff zu ihrem Hafen. Schicke ihn noch einmal los, sobald er angelegt hat.",
+    ),
     ("Calm map (no swaying, birds or sparkles)", "Ruhige Karte (kein Wiegen, keine Vögel, kein Glitzern)"),
     ("The scout keeps watch: the tower sees far around.", "Der Späher hält Wache: Der Turm sieht weit umher."),
     (

@@ -1355,16 +1355,8 @@ impl App {
                     )
                 }
                 // (an answer to the player's own click: not when a replay repeats the click)
-                Event::CommandRejected { player, reason, .. } if *player == me && self.playback.is_none() => {
-                    let why = match reason {
-                        rr_sim::RejectReason::NotYourTerritory => "not your land",
-                        rr_sim::RejectReason::NotBuildable => "no room to build there",
-                        rr_sim::RejectReason::NoFlag => "there is no flag",
-                        rr_sim::RejectReason::BadRoad => "the road can't go there",
-                        rr_sim::RejectReason::NotFound => "nothing there to do it with",
-                        rr_sim::RejectReason::NotAllowed => "not allowed",
-                    };
-                    (crate::i18n::msg("Not possible: {1}", &[why]), None)
+                Event::CommandRejected { player, reason, cmd } if *player == me && self.playback.is_none() => {
+                    (refusal_text(*reason, cmd), None)
                 }
                 Event::NothingInReach { player, at, kind } if *player == me => {
                     // once per kind in 10 minutes (new-player round 9, #9: two farms said "no room
@@ -2869,6 +2861,28 @@ impl eframe::App for App {
             ctx.request_repaint();
         }
     }
+}
+
+/// What the player is told when the game refuses a click of theirs.
+fn refusal_text(reason: rr_sim::RejectReason, cmd: &Cmd) -> String {
+    use rr_sim::RejectReason as R;
+    if reason == R::ComingBySea {
+        let text = if matches!(cmd, Cmd::SendScout { .. }) {
+            "No scout on this island: one comes by ship to its harbor. Send him again once he has landed."
+        } else {
+            "No geologist on this island: one comes by ship to its harbor. Send him again once he has landed."
+        };
+        return crate::i18n::tr(text).to_string();
+    }
+    let why = match reason {
+        R::NotYourTerritory => "not your land",
+        R::NotBuildable => "no room to build there",
+        R::NoFlag => "there is no flag",
+        R::BadRoad => "the road can't go there",
+        R::NotFound => "nothing there to do it with",
+        R::NotAllowed | R::ComingBySea => "not allowed",
+    };
+    crate::i18n::msg("Not possible: {1}", &[why])
 }
 
 /// How often an idle screen (menu, editor, paused game) is redrawn without input.

@@ -2001,6 +2001,34 @@ fn bq_legend(app: &App, ctx: &egui::Context) {
 
 /// Why nobody can attack: no military building in reach (the headquarters only defends), or
 /// the ones in reach keep their last soldier (new-player round 6, #8).
+/// Why a rival's post or warehouse can't be attacked, as plainly as the game knows it.
+fn not_attackable_reason(sim: &rr_sim::Sim, me: u8, b: rr_sim::BuildingId) -> &'static str {
+    let bd = sim.building(b);
+    if !bd.is_ready() || (sim.rules().building(bd.kind).is_military() && !bd.occupied) {
+        return "Not attackable: nobody has moved in yet.";
+    }
+    if bd.kind == rr_rules::BuildingType::Storehouse {
+        return "A storehouse can't be attacked: take the military buildings around it.";
+    }
+    match sim.sea_attack_blocker(me, b) {
+        _ if sim.visibility(me, bd.pos) == rr_sim::Visibility::Visible => {
+            "Not attackable: none of your military buildings is near enough."
+        }
+        Some(rr_sim::SeaBlocker::NoLanding) => {
+            "Out of sight, and not by sea either: no harbor spot near it to land at. Get it in sight of your military buildings or a lookout tower."
+        }
+        Some(rr_sim::SeaBlocker::NoHarbor) => {
+            "Out of sight. By sea you would need a harbor of yours on the same sea, on another island."
+        }
+        Some(rr_sim::SeaBlocker::NoShip) => {
+            "Out of sight. By sea you would need a free ship: all of yours are busy or none is built."
+        }
+        Some(rr_sim::SeaBlocker::NoPosts) | None => {
+            "Out of sight. By sea, soldiers sail from the military buildings near your harbor: build one there or send it soldiers."
+        }
+    }
+}
+
 fn no_attack_reason(posts_in_reach: usize) -> &'static str {
     if posts_in_reach == 0 {
         "Attacks start from your military buildings nearby (barracks, guardhouse, watchtower, fortress); the castle's soldiers only defend. Build one close to it."
@@ -2323,7 +2351,7 @@ fn building_info(
         if sim.are_allies(bd.player, me) {
             ui.label(crate::i18n::tr("An ally."));
         } else if (def.is_military() || bd.kind.is_warehouse()) && !sim.is_attackable(me, b) {
-            ui.label(crate::i18n::tr("Not attackable: nobody has moved in yet, or you can't see it."));
+            ui.label(crate::i18n::tr(not_attackable_reason(sim, me, b)));
         } else if def.is_military() || bd.kind.is_warehouse() {
             attack_panel(app, ui, b, cmds, close, attack);
         }

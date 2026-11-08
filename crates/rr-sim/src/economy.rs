@@ -1,6 +1,7 @@
 //! Buildings, construction sites, warehouses, wares and the distributor.
 
 use crate::figures::FigKind;
+use crate::seafaring::Cargo;
 use crate::{BuildingId, Event, FigId, FlagId, PlayerId, PlayerSettings, RejectReason, Sim, WareId};
 use rr_core::{Direction, MapCoord, Purpose};
 use rr_rules::{BuildingType, Job, Size, Ware};
@@ -687,6 +688,9 @@ impl Sim {
                 d.sea_incoming[i] = d.sea_incoming[i].saturating_sub(1);
             }
         }
+        // soldiers aboard a sea attack from here are in its keeping (eval: a save made then
+        // would not load)
+        self.sea_attack_harbor_lost(id, b.player, b.pos);
         // a loaded expedition ship looks for another harbor
         if let Some(s) = b.expedition.as_ref().and_then(|e| e.ship)
             && self.ships.contains(s)
@@ -1049,6 +1053,9 @@ impl Sim {
                         self.figures[f].target = Some(pos);
                         return;
                     }
+                    if self.stock_by_sea(b, Cargo::Person(*j), false) {
+                        return;
+                    }
                 }
                 P::Collect => {
                     let r = routes();
@@ -1069,6 +1076,9 @@ impl Sim {
                         self.figures[f].target = Some(pos);
                         return;
                     }
+                    if self.stock_by_sea(b, Cargo::Person(*j), true) {
+                        return;
+                    }
                 }
                 _ => {}
             }
@@ -1078,6 +1088,9 @@ impl Sim {
                 P::MoveOut if inv.ware(*w) > 0 => {
                     if let Some(dest) = self.nearest_warehouse_for(player, flag, Some(*w)).filter(|d| *d != b) {
                         self.take_from_warehouse(b, *w, dest);
+                        return;
+                    }
+                    if self.stock_by_sea(b, Cargo::Ware(*w), false) {
                         return;
                     }
                 }
@@ -1096,6 +1109,9 @@ impl Sim {
                         .min();
                     if let Some((_, _, src)) = src {
                         self.take_from_warehouse(src, *w, b);
+                        return;
+                    }
+                    if self.stock_by_sea(b, Cargo::Ware(*w), true) {
                         return;
                     }
                 }
@@ -1451,7 +1467,7 @@ impl Sim {
 
     /// Queue a ware to leave a warehouse towards `goal`; false (and nothing done) if the
     /// warehouse has none (a stale snapshot of its stock must not make wares out of nothing).
-    fn take_from_warehouse(&mut self, wh: BuildingId, ware: Ware, goal: BuildingId) -> bool {
+    pub(crate) fn take_from_warehouse(&mut self, wh: BuildingId, ware: Ware, goal: BuildingId) -> bool {
         let player = self.buildings[wh].player;
         match self.buildings[wh].inventory.as_mut() {
             Some(inv) if inv.wares[ware.index()] > 0 => inv.wares[ware.index()] -= 1,
