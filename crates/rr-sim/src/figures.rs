@@ -470,6 +470,44 @@ impl Sim {
         self.figures[f].step = Step::Go;
     }
 
+    /// A soldier with no warehouse in reach walks to the nearest military building of ours on
+    /// his land that wants more soldiers than it has or expects, at most `POST_WALK` steps away.
+    /// False if there is none (then he gets lost, as anyone).
+    fn soldier_to_a_post(&mut self, f: FigId) -> bool {
+        const POST_WALK: usize = 50;
+        let (player, pos) = (self.figures[f].player, self.figures[f].pos);
+        let g = self.world.grid();
+        let out = self.soldiers_on_mission(player);
+        let mut posts: Vec<(u32, BuildingId, MapCoord)> = self
+            .buildings
+            .iter()
+            .filter(|(_, b)| {
+                b.player == player
+                    && b.is_ready()
+                    && crate::is_frontier_military(b.kind)
+                    && g.distance(b.pos, pos) <= POST_WALK as u32
+                    && !self.other_land(pos, b.pos)
+            })
+            .filter(|(id, b)| {
+                let have = b.soldiers.len() + b.soldiers_coming as usize + out.get(id).copied().unwrap_or(0);
+                have < (b.garrison_wanted as usize).min(self.required_troops(*id))
+            })
+            .map(|(id, b)| (g.distance(b.pos, pos), id, self.flags[b.flag].pos))
+            .collect();
+        posts.sort_by_key(|(d, id, _)| (*d, id.index()));
+        for (_, b, flag) in posts.into_iter().take(3) {
+            let Some(mut path) = self.find_path(pos, flag, 3000).filter(|p| p.len() < POST_WALK) else { continue };
+            path.push(Direction::NW);
+            self.buildings[b].soldiers_coming += 1;
+            self.figures[f].inside = None;
+            self.figures[f].target = None;
+            self.figures[f].kind = FigKind::Soldier(SoldierTask::ToBuilding(b));
+            self.go(f, &path, Step::Go);
+            return true;
+        }
+        false
+    }
+
     fn go_home(&mut self, f: FigId) {
         let fig = &self.figures[f];
         let (player, pos) = (fig.player, fig.pos);
@@ -526,6 +564,12 @@ impl Sim {
                 self.go(f, &path, Step::Go);
                 return;
             }
+        }
+        // a soldier with no warehouse to go to (an island won by a sea attack has none) moves
+        // into a post of ours nearby that has room, rather than getting lost (ours, the owner:
+        // "not by default"; RTTR lets him wander and die)
+        if self.figures[f].job.soldier_rank().is_some() && self.soldier_to_a_post(f) {
+            return;
         }
         // a lost figure stands on its node, never in a building: a carrier whose road went while
         // it stepped into a building arrived "inside" on the way home (the eval's audit, 44)

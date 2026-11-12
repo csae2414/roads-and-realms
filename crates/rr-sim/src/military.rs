@@ -277,7 +277,7 @@ impl Sim {
         if !self.is_attackable(player, t) {
             return Err(RejectReason::NotAllowed);
         }
-        let sea = self.attack_sources(player, t).is_empty().then(|| self.sea_attack_plan(player, t)).flatten();
+        let sea = self.sea_route(player, t);
         let offer = match &sea {
             Some(plan) => self.offer_from(&plan.sources, strong),
             None => self.attack_offer(player, t, strong),
@@ -440,17 +440,26 @@ impl Sim {
 
     /// Would an attack of `player` on the building at `target` go by sea (nobody can walk there)?
     pub fn attack_goes_by_sea(&self, player: PlayerId, target: MapCoord) -> bool {
-        self.building_at(target)
-            .is_some_and(|t| self.attack_sources(player, t).is_empty() && self.sea_attack_plan(player, t).is_some())
+        self.building_at(target).is_some_and(|t| self.sea_route(player, t).is_some())
     }
 
-    /// The posts that may attack `t`: on foot, or else by sea (RTTR sea attacks).
-    fn any_sources(&self, player: PlayerId, t: BuildingId) -> Vec<(u32, BuildingId)> {
+    /// How an attack on `t` goes by sea, if it does: when no post can walk there, or when the
+    /// posts by our harbor can spare more soldiers than those on foot (the owner's game: one
+    /// soldier guardhouses on the enemy's island, none to spare, hid two fortresses by a harbor).
+    pub(crate) fn sea_route(&self, player: PlayerId, t: BuildingId) -> Option<crate::SeaAttackPlan> {
         let land = self.attack_sources(player, t);
-        if !land.is_empty() {
-            return land;
+        let on_foot: usize = land.iter().map(|(d, b)| self.attackers_available(*b, *d)).sum();
+        let plan = self.sea_attack_plan(player, t)?;
+        let by_sea: usize = plan.sources.iter().map(|(d, b)| self.attackers_available(*b, *d)).sum();
+        (land.is_empty() || by_sea > on_foot).then_some(plan)
+    }
+
+    /// The posts that may attack `t`: on foot, or by sea (RTTR sea attacks; `sea_route`).
+    fn any_sources(&self, player: PlayerId, t: BuildingId) -> Vec<(u32, BuildingId)> {
+        match self.sea_route(player, t) {
+            Some(plan) => plan.sources,
+            None => self.attack_sources(player, t),
         }
-        self.sea_attack_plan(player, t).map(|p| p.sources).unwrap_or_default()
     }
 
     /// The soldiers an attack on `t` takes, in the order it takes them, with their posts (RTTR
@@ -461,7 +470,7 @@ impl Sim {
     }
 
     /// The soldiers the posts `sources` offer, in the order an attack takes them.
-    fn offer_from(&self, sources: &[(u32, BuildingId)], strong: bool) -> Vec<(BuildingId, FigId)> {
+    pub(crate) fn offer_from(&self, sources: &[(u32, BuildingId)], strong: bool) -> Vec<(BuildingId, FigId)> {
         let rank = |s: FigId| self.figures[s].job.soldier_rank().map_or(0, |r| r as i32);
         let key = |s: FigId| if strong { -rank(s) } else { rank(s) };
         let mut offered: Vec<(i32, u32, BuildingId, FigId)> = Vec::new();
@@ -480,10 +489,12 @@ impl Sim {
     /// many may go, and the ranks they would send, strongest and weakest first.
     pub fn attack_plan(&self, player: PlayerId, target: MapCoord) -> AttackPlan {
         let Some(t) = self.building_at(target) else { return AttackPlan::default() };
-        let land = self.attack_sources(player, t);
-        let by_sea = land.is_empty();
-        let sources =
-            if by_sea { self.sea_attack_plan(player, t).map(|p| p.sources).unwrap_or_default() } else { land };
+        let sea = self.sea_route(player, t);
+        let by_sea = sea.is_some();
+        let sources = match sea {
+            Some(plan) => plan.sources,
+            None => self.attack_sources(player, t),
+        };
         let ranks = |strong| -> Vec<u8> {
             self.offer_from(&sources, strong)
                 .into_iter()

@@ -2243,6 +2243,10 @@ const DE: &[(&str, &str)] = &[
     ("Look for map files again", "Nochmals nach Kartendateien suchen"),
     ("Play this map", "Diese Karte spielen"),
     ("⛵ Send the expedition here", "⛵ Expedition hierher schicken"),
+    (
+        "No warehouse on this coast, so no builder can come: send an expedition here from one of your harbors.",
+        "Kein Lager an dieser Küste, also kommt kein Bauarbeiter: Schicke eine Expedition von einem deiner Häfen hierher.",
+    ),
     ("⛵ Prepare an expedition", "⛵ Expedition vorbereiten"),
     (
         "Expedition ready: click a free harbor spot on another coast.",

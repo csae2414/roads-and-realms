@@ -6,7 +6,7 @@ crates/rr-app/src/render.rs::draw_edges 180
 crates/rr-app/src/sprites.rs::building 270
 crates/rr-app/src/sprites.rs::draw 320
 crates/rr-app/src/sprites.rs::ware_icon 224
-crates/rr-app/src/ui.rs::action_window 310
+crates/rr-app/src/ui.rs::action_window 300
 crates/rr-app/src/ui.rs::building_info 311
 crates/rr-app/src/ui.rs::panels 251
 crates/rr-app/src/ui.rs::windows 255

@@ -998,3 +998,36 @@ fn a_border_pushed_up_to_a_flag_takes_it() {
         }
     }
 }
+
+/// The owner: soldiers of a building pulled down on an island with no warehouse (won by a sea
+/// attack) wandered off and died. They move into a post of ours nearby that has room; only
+/// with none in reach do they get lost.
+#[test]
+fn soldiers_with_no_warehouse_move_into_a_post_nearby() {
+    let h0 = c(14, 20);
+    let mut sim = sim_with(&[h0]);
+    ok(&mut sim, 0, Cmd::SetMilitary { values: [10, 5, 5, 5, 8, 8, 8, 8] });
+    let g1 = build(&mut sim, 0, B::Guardhouse, c(21, 20), h0);
+    run_until(&mut sim, 30_000, |s| s.building(g1).soldiers.len() == 3).expect("guardhouse manned");
+    let tower = build(&mut sim, 0, B::Watchtower, c(17, 26), h0);
+    run_until(&mut sim, 30_000, |s| !s.building(tower).soldiers.is_empty()).expect("tower occupied");
+    run_until(&mut sim, 30_000, |s| s.building(tower).soldiers.len() >= 5).expect("tower manned");
+    // no warehouse any more: nobody else comes
+    sim.debug_destroy_building(h0);
+    let tpos = sim.building(tower).pos;
+    // the tower lets some go: no warehouse, and no room elsewhere (the guardhouse is full), so
+    // they get lost, as before
+    ok(&mut sim, 0, Cmd::SetGarrisonWanted { at: tpos, wanted: 2 });
+    run_until(&mut sim, 3_000, |s| s.building(tower).soldiers.len() == 2).expect("tower let some go");
+    let soldiers = |s: &Sim| s.figures().iter().filter(|(_, f)| f.job.soldier_rank().is_some()).count();
+    run_until(&mut sim, 20_000, |s| soldiers(s) == 3 + 2).expect("the ones with nowhere to go are lost");
+    // room in the tower again, and the guardhouse pulled down: its soldiers move in
+    ok(&mut sim, 0, Cmd::SetGarrisonWanted { at: tpos, wanted: 6 });
+    let before = sim.building(tower).soldiers.len();
+    let all = soldiers(&sim);
+    sim.debug_destroy_building(sim.building(g1).pos);
+    run_until(&mut sim, 6_000, |s| s.building(tower).soldiers.len() >= before + 3)
+        .unwrap_or_else(|| panic!("not in the tower: {} of {before} + 3", sim.building(tower).soldiers.len()));
+    run_until(&mut sim, 3_000, |_| false);
+    assert_eq!(soldiers(&sim), all, "nobody died");
+}

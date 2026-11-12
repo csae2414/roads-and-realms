@@ -1693,6 +1693,9 @@ impl Sim {
                                     break;
                                 }
                             }
+                        } else if has_harbor {
+                            // no warehouse on this coast at all: a ship brings them over
+                            self.sea_reinforce(b, want - have);
                         }
                     }
                 }

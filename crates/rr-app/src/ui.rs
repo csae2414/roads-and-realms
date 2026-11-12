@@ -1168,6 +1168,34 @@ pub fn windows(app: &mut App, ctx: &egui::Context) {
     }
 }
 
+/// A harbor spot clicked: send a waiting expedition there (true: the window closes), on free
+/// land or on our own land on another coast (an island won by a sea attack has no warehouse, so
+/// nobody comes to build there; the owner, 0.10.59), and say so where only an expedition helps.
+fn expedition_spot(ui: &mut egui::Ui, sim: &rr_sim::Sim, me: u8, node: MapCoord, cmds: &mut Vec<Cmd>) -> bool {
+    let world = sim.world();
+    let ready = sim
+        .buildings()
+        .iter()
+        .find(|(id, b)| b.player == me && sim.expedition_ready(*id) && sim.harbor_sea(b.pos) == sim.harbor_sea(node));
+    let mut sent = false;
+    if let Some((_, h)) = ready
+        && (world.owner(node).is_none() || !sim.same_land(node, h.pos))
+        && sim.colony_spot_free(me, node)
+        && ui.button(crate::i18n::tr("⛵ Send the expedition here")).clicked()
+    {
+        cmds.push(Cmd::SendExpedition { harbor: h.pos, to: node });
+        sent = true;
+    }
+    let no_store =
+        !sim.buildings().iter().any(|(_, b)| b.player == me && b.inventory.is_some() && sim.same_land(b.pos, node));
+    if world.owner(node) == Some(me) && no_store {
+        ui.label(crate::i18n::tr(
+            "No warehouse on this coast, so no builder can come: send an expedition here from one of your harbors.",
+        ));
+    }
+    sent
+}
+
 #[allow(clippy::too_many_lines)] // to split (architect round 2, #8: no new long ones)
 fn action_window(app: &mut App, ctx: &egui::Context) {
     app.session.work_area = None;
@@ -1280,18 +1308,8 @@ fn action_window(app: &mut App, ctx: &egui::Context) {
                 return;
             }
             // an expedition waiting for a target can land on a free harbor spot
-            if world.is_harbor_spot(node) {
-                let ready = sim.buildings().iter().find(|(id, b)| {
-                    b.player == me && sim.expedition_ready(*id) && sim.harbor_sea(b.pos) == sim.harbor_sea(node)
-                });
-                if let Some((_, h)) = ready
-                    && world.owner(node).is_none()
-                    && sim.colony_spot_free(me, node)
-                    && ui.button(crate::i18n::tr("⛵ Send the expedition here")).clicked()
-                {
-                    cmds.push(Cmd::SendExpedition { harbor: h.pos, to: node });
-                    close = true;
-                }
+            if world.is_harbor_spot(node) && expedition_spot(ui, sim, me, node, &mut cmds) {
+                close = true;
             }
             if world.owner(node) != Some(me) {
                 ui.label(crate::i18n::tr("You can only build on your own land."));

@@ -474,7 +474,10 @@ impl Sim {
 
     /// How `player` could attack `t` by sea, if at all (RTTR GetSoldiersForSeaAttack): a harbor
     /// spot within `SEA_ATTACK_DISTANCE` of the target and a short walk from it, one of our
-    /// harbors on the same sea with an idle ship there, and our posts near that harbor.
+    /// harbors on the same sea with an idle ship there, and our posts near that harbor. Of those,
+    /// the one whose posts can spare the most soldiers (the nearest landing and harbor first on a
+    /// tie; the owner's game: the nearest harbor had only one-soldier guardhouses, a farther one
+    /// two fortresses).
     pub fn sea_attack_plan(&self, player: PlayerId, t: BuildingId) -> Option<SeaAttackPlan> {
         let g = self.world.grid();
         let tb = self.buildings.get(t)?;
@@ -490,6 +493,7 @@ impl Sim {
             .map(|l| (g.distance(l, tb.pos), l))
             .collect();
         landings.sort_by_key(|(d, l)| (*d, l.y, l.x));
+        let mut best: Option<(usize, SeaAttackPlan)> = None;
         for (_, landing) in landings {
             let sea = self.harbor_sea(landing)?;
             let mut harbors: Vec<(u32, BuildingId)> = self
@@ -523,11 +527,14 @@ impl Sim {
                     .collect();
                 sources.sort();
                 if !sources.is_empty() {
-                    return Some(SeaAttackPlan { harbor: h, landing, ship, sources });
+                    let n: usize = sources.iter().map(|(d, b)| self.attackers_available(*b, *d)).sum();
+                    if best.as_ref().is_none_or(|(m, _)| n > *m) {
+                        best = Some((n, SeaAttackPlan { harbor: h, landing, ship, sources }));
+                    }
                 }
             }
         }
-        None
+        best.map(|(_, p)| p)
     }
 
     /// Why `player` can't attack `t` by sea (for the building's window), or None if it can: the
@@ -564,6 +571,40 @@ impl Sim {
             return Some(SeaBlocker::NoShip);
         }
         Some(SeaBlocker::NoPosts)
+    }
+
+    /// A post of ours on a coast with no warehouse of ours wants `n` more soldiers: an idle ship
+    /// brings them from the posts by one of our harbors, as for a sea attack, and they move in
+    /// (an island won by a sea attack has no warehouse; the owner: "I couldn't send soldiers
+    /// together with my landing"). One trip per post at a time.
+    pub(crate) fn sea_reinforce(&mut self, b: BuildingId, n: usize) {
+        let (player, pos) = (self.buildings[b].player, self.buildings[b].pos);
+        let busy =
+            self.ships.iter().any(|(_, s)| matches!(&s.task, ShipTask::SeaAttack { target, .. } if *target == b));
+        let store_here = self
+            .buildings
+            .iter()
+            .any(|(_, w)| w.player == player && w.inventory.is_some() && self.same_land(w.pos, pos));
+        if busy || store_here || n == 0 {
+            return;
+        }
+        let Some(plan) = self.sea_attack_plan(player, b) else { return };
+        // strong or weak first by the military setting, as from a warehouse
+        let strong = self.players[player as usize].settings.military[1] >= crate::MILITARY_SCALE[1] / 2;
+        let offer = self.offer_from(&plan.sources, strong);
+        let mut sent = 0u8;
+        for (src, f) in offer.into_iter().take(n.min(SHIP_CAPACITY)) {
+            let Some(i) = self.buildings[src].soldiers.iter().position(|x| *x == f) else { continue };
+            self.buildings[src].soldiers.remove(i);
+            self.figures[f].kind =
+                FigKind::Soldier(crate::military::SoldierTask::ToShip { ship: plan.ship, target: b, home: src });
+            self.buildings[src].fig_queue.push(f);
+            self.start_building_timer(src, 1);
+            sent += 1;
+        }
+        if sent > 0 {
+            self.start_sea_attack(&plan, b, sent);
+        }
     }
 
     /// `sent` soldiers are on their way to board for an attack on `t`.
@@ -1247,10 +1288,11 @@ impl Sim {
                     )
             }
         };
-        self.world.owner(spot).is_none_or(|o| o == player)
-            && self.world.obj(spot).blocking() == rr_world::Blocking::None
-            && self.building_at(spot).is_none()
-            && se_ok
+        // (a tree on the spot the expedition fells: on an island won by a sea attack nobody else
+        // can; the owner's game had two spots there under trees)
+        let clear = self.world.obj(spot).blocking() == rr_world::Blocking::None
+            || matches!(self.world.obj(spot), rr_world::NodeObj::Tree { .. });
+        self.world.owner(spot).is_none_or(|o| o == player) && clear && self.building_at(spot).is_none() && se_ok
     }
 
     pub(crate) fn cmd_send_expedition(
@@ -1332,6 +1374,9 @@ impl Sim {
         }
         if self.world.obj(se).blocking() != rr_world::Blocking::None && self.flag_at(se).is_none() {
             self.world.set_obj(se, rr_world::NodeObj::None);
+        }
+        if matches!(self.world.obj(spot), rr_world::NodeObj::Tree { .. }) {
+            self.world.set_obj(spot, rr_world::NodeObj::None);
         }
         let flag = match self.flag_at(se) {
             Some(f) => f,

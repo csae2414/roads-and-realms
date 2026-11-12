@@ -637,3 +637,86 @@ fn an_explored_island_out_of_sight_can_be_attacked_by_sea() {
         |s: &Sim| s.figures().iter().any(|(_, f)| f.player == 0 && f.inside.is_none() && s.same_land(f.pos, castle));
     run_until(&mut sim, 8_000, landed).unwrap_or_else(|| panic!("nobody landed:\n{}", sim.dump_string()));
 }
+
+/// The owner's game (checkme): two fortresses of generals by a harbor, and still no attack on
+/// the rival's island, because a few posts of ours over there, with no soldier to spare, made
+/// every attack one on foot. Now it goes by sea when the posts by the harbor can send more.
+#[test]
+fn a_post_on_their_island_doesnt_block_the_sea_attack() {
+    let (mut sim, _, _, castle) = sea_attack_ready();
+    let before = sim.attackers_for(0, castle);
+    let post = rivals_post_handed_over(&mut sim, castle);
+    assert!(sim.building(post).soldiers.is_empty(), "the post empty");
+    assert!(sim.attack_posts_near(0, castle) > 0, "the post counts");
+    assert!(sim.attack_goes_by_sea(0, castle), "by sea all the same");
+    assert_eq!(sim.attackers_for(0, castle), before, "the soldiers by the harbor may go");
+    ok(&mut sim, Cmd::Attack { target: castle, soldiers: 2, strong: true });
+    run_until(&mut sim, 10_000, |s| s.building_at(castle).is_none()).expect("the castle taken");
+}
+
+/// The owner's game: on the island won by a sea attack two harbor spots stood under trees, and
+/// nobody there could fell them. The expedition fells a tree on its spot.
+#[test]
+fn an_expedition_fells_a_tree_on_its_spot() {
+    let (mut sim, a, b) = islands();
+    let ha = harbor_on_a(&mut sim, a);
+    let yard_at = yard_spot(&sim, a);
+    ok(&mut sim, Cmd::PlaceBuilding { at: yard_at, kind: B::Shipyard });
+    ok(&mut sim, Cmd::SetShipyardMode { at: yard_at, ships: true });
+    connect(&mut sim, yard_at);
+    sim.debug_add_ware(0, Ware::Boards, 30);
+    run_until(&mut sim, 40_000, |s| !s.ships().is_empty()).expect("ship");
+    ok(&mut sim, Cmd::StartExpedition { harbor: a });
+    run_until(&mut sim, 6000, |s| s.expedition_ready(ha)).expect("expedition ready");
+    sim.debug_set_obj(b, rr_world::NodeObj::Tree { species: 1, stage: 3 });
+    assert!(sim.colony_spot_free(0, b), "a tree doesn't keep the expedition off");
+    ok(&mut sim, Cmd::SendExpedition { harbor: a, to: b });
+    run_until(&mut sim, 6000, |s| s.building_at(b).is_some()).expect("colony founded");
+    let hb = sim.building_at(b).unwrap();
+    run_until(&mut sim, 20_000, |s| s.building(hb).is_ready()).expect("colony harbor built");
+}
+
+/// The rival builds a guardhouse by its castle and gives it to us: it stands empty (none of ours
+/// can walk there), a post of ours on their island with nobody in it and no warehouse of ours.
+fn rivals_post_handed_over(sim: &mut Sim, castle: MapCoord) -> rr_sim::BuildingId {
+    let p1 = |sim: &mut Sim, cmd: Cmd| {
+        let out = sim.step(&[PlayerCommand { player: 1, cmd: cmd.clone() }]);
+        assert!(out.events.iter().all(|e| !matches!(e, Event::CommandRejected { .. })), "{cmd:?}: {:?}", out.events);
+    };
+    sim.debug_add_job(1, rr_rules::Job::Private, 2);
+    let g = sim.world().grid();
+    let hq_flag = g.neighbor(castle, SE);
+    let mut near: Vec<MapCoord> = g.within(castle, 9).filter(|p| g.distance(*p, castle) >= 4).collect();
+    near.sort_by_key(|p| (g.distance(*p, castle), p.y, p.x));
+    let at = near
+        .into_iter()
+        .find(|p| {
+            sim.world().bq_for(*p, 1).allows(rr_world::Bq::Hut)
+                && !sim.military_building_near(*p, 1)
+                && sim.road_path(1, g.neighbor(*p, SE), hq_flag, &[]).is_some()
+        })
+        .expect("a guardhouse spot by the rival's castle");
+    p1(sim, Cmd::PlaceBuilding { at, kind: B::Guardhouse });
+    let dirs = sim.road_path(1, g.neighbor(at, SE), hq_flag, &[]).unwrap();
+    p1(sim, Cmd::BuildRoad { from: g.neighbor(at, SE), dirs });
+    let post = sim.building_at(at).unwrap();
+    run_until(sim, 30_000, |s| !s.building(post).soldiers.is_empty()).expect("the rival's guardhouse manned");
+    p1(sim, Cmd::HandOver { at, to: 0 });
+    run_until(sim, 3_000, |s| s.building(post).player == 0).expect("handed over");
+    post
+}
+
+/// The owner: posts won on an island by a sea attack got no soldiers (no warehouse there), and
+/// the island was lost again. A ship brings them from the posts by our harbor.
+#[test]
+fn a_post_with_no_warehouse_on_its_coast_gets_soldiers_by_ship() {
+    let (mut sim, _, gh, castle) = sea_attack_ready();
+    let post = rivals_post_handed_over(&mut sim, castle);
+    run_until(&mut sim, 12_000, |s| s.building(post).soldiers.len() >= 2)
+        .unwrap_or_else(|| panic!("no soldiers came: {}\n{}", sim.building(post).soldiers.len(), sim.dump_string()));
+    sim.audit().expect("a save made now loads");
+    // the ship is free again, and the guardhouse at home gets its soldiers back from the castle
+    run_until(&mut sim, 6_000, |s| s.ships().iter().all(|(_, x)| x.task == rr_sim::ShipTask::Idle))
+        .expect("the ship free again");
+    let _ = gh;
+}

@@ -675,7 +675,7 @@ pub struct Sim {
 pub const SAVE_VERSION: u32 = 17;
 /// Raise on any change to the rules of play that doesn't change the save format (network games
 /// must run the same simulation everywhere).
-pub const SIM_VERSION: u32 = 59;
+pub const SIM_VERSION: u32 = 60;
 /// Most soldiers of one rank a warehouse can hold in reserve.
 pub const MAX_RESERVE: u8 = 20;
 const SAVE_MAGIC: &[u8; 8] = b"RRSAVE\0\0";
