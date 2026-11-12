@@ -118,6 +118,9 @@ pub struct App {
 #[derive(Default)]
 pub struct Session {
     pub pending: Vec<PlayerCommand>,
+    /// An expedition being loaded at the harbor (first) for the spot (second): sent there once
+    /// it is ready (the harbor spot's "Prepare an expedition for here"), and the frame asked.
+    pub expedition_for: Option<(MapCoord, MapCoord, u32)>,
     pub selected: Option<MapCoord>,
     /// The settler the camera follows, until the player moves the map (genre lessons, PLAN §27,
     /// #7: watching the village).
@@ -1014,6 +1017,21 @@ impl App {
         if self.sim.gf().0.is_multiple_of(600) {
             self.dead_end_check();
         }
+        if self.sim.gf().0.is_multiple_of(50)
+            && let Some((h, spot, asked)) = self.session.expedition_for
+        {
+            let harbor = self.sim.building_at(h).filter(|b| self.sim.building(*b).player == self.player);
+            match harbor {
+                Some(b) if self.sim.expedition_ready(b) => {
+                    self.session.expedition_for = None;
+                    self.cmd(Cmd::SendExpedition { harbor: h, to: spot });
+                }
+                // still loading (or the order not carried out yet)
+                Some(b) if self.sim.building(b).expedition.is_some() || self.sim.gf().0 < asked + 200 => {}
+                // given up, or the harbor gone
+                _ => self.session.expedition_for = None,
+            }
+        }
         if self.sim.gf().0.is_multiple_of(100) {
             self.truce_news();
             self.story_news();
@@ -1283,7 +1301,8 @@ impl App {
                 | Event::BuildingCaptured { .. }
                 | Event::PlayerDefeated { .. }
                 | Event::LandLost { .. }
-                | Event::CatapultHit { .. } => MSG_MILITARY,
+                | Event::CatapultHit { .. }
+                | Event::SoldiersBySea { .. } => MSG_MILITARY,
                 Event::BuildingLost { kind, .. } if self.sim.rules().building(*kind).is_military() => MSG_MILITARY,
                 Event::CommandRejected { .. } => MSG_GENERAL,
                 _ => MSG_ECONOMY,
@@ -1318,6 +1337,16 @@ impl App {
                         (k, Some(a)) => crate::i18n::msg("Geologist found {1} ({2})", &[k, &a.to_string()]),
                         (k, None) => crate::i18n::msg("Geologist found {1}", &[k]),
                     };
+                    (txt, Some(*at))
+                }
+                // (the owner: posts on a conquered island filled up "all of a sudden")
+                Event::SoldiersBySea { player, at, soldiers } if *player == me => {
+                    let kind =
+                        self.sim.building_at(*at).map_or("Building", |b| ui::building_key(self.sim.building(b).kind));
+                    let txt = crate::i18n::msg(
+                        if *soldiers == 1 { "One soldier sails to our {2}" } else { "{1} soldiers sail to our {2}" },
+                        &[&soldiers.to_string(), kind],
+                    );
                     (txt, Some(*at))
                 }
                 Event::BuildingCaptured { player, at, by } if *player == me || *by == me => {

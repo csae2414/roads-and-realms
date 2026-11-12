@@ -292,6 +292,11 @@ pub enum Cmd {
         n: u32,
         recruit: bool,
     },
+    /// Give up the expedition being prepared or ready at `harbor`: its materials and builder go
+    /// back into the harbor's stock, its ship is free (last, so replays keep reading).
+    CancelExpedition {
+        harbor: MapCoord,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -323,7 +328,9 @@ impl Cmd {
             Cmd::RemoveRoad { flag, .. } | Cmd::UpgradeRoad { flag, .. } => vec![*flag],
             Cmd::SendGeologist { flag } | Cmd::SendScout { flag } => vec![*flag],
             Cmd::Attack { target, .. } => vec![*target],
-            Cmd::StartExpedition { harbor } | Cmd::StartExploration { harbor } => vec![*harbor],
+            Cmd::StartExpedition { harbor } | Cmd::StartExploration { harbor } | Cmd::CancelExpedition { harbor } => {
+                vec![*harbor]
+            }
             Cmd::SendExpedition { harbor, to } => vec![*harbor, *to],
             Cmd::SetDistribution { .. }
             | Cmd::SetTransportOrder { .. }
@@ -454,6 +461,13 @@ pub enum Event {
         at: MapCoord,
         ware: Ware,
         n: u32,
+    },
+    /// `soldiers` set out by ship for `player`'s post at `at` on a coast with no warehouse of
+    /// theirs (last, so saved event lists keep reading).
+    SoldiersBySea {
+        player: PlayerId,
+        at: MapCoord,
+        soldiers: u8,
     },
 }
 
@@ -675,7 +689,7 @@ pub struct Sim {
 pub const SAVE_VERSION: u32 = 17;
 /// Raise on any change to the rules of play that doesn't change the save format (network games
 /// must run the same simulation everywhere).
-pub const SIM_VERSION: u32 = 60;
+pub const SIM_VERSION: u32 = 61;
 /// Most soldiers of one rank a warehouse can hold in reserve.
 pub const MAX_RESERVE: u8 = 20;
 const SAVE_MAGIC: &[u8; 8] = b"RRSAVE\0\0";
@@ -1206,6 +1220,7 @@ impl Sim {
             // roads are upgraded by traffic (pack donkeys), not by hand
             Cmd::UpgradeRoad { .. } => Err(RejectReason::NotAllowed),
             Cmd::StartExpedition { harbor } => self.cmd_start_expedition(player, *harbor),
+            Cmd::CancelExpedition { harbor } => self.cmd_cancel_expedition(player, *harbor),
             Cmd::StartExploration { harbor } => self.cmd_start_exploration(player, *harbor),
             Cmd::HandOver { at, to } => self.cmd_hand_over(player, *at, *to),
             Cmd::Offer { at, ware, n } => self.cmd_offer(player, *at, *ware, *n),

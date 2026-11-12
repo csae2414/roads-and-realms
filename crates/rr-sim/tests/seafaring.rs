@@ -720,3 +720,86 @@ fn a_post_with_no_warehouse_on_its_coast_gets_soldiers_by_ship() {
         .expect("the ship free again");
     let _ = gh;
 }
+
+/// The owner (save hafen): a harbor site on our own land on an island with no warehouse of ours
+/// waited for ever for a builder. Our harbor across the sea gathers a builder and the harbor's
+/// materials, and a ship brings them.
+#[test]
+fn a_harbor_site_with_no_warehouse_on_its_island_is_served_by_ship() {
+    let (mut sim, a, b) = islands();
+    let ha = harbor_on_a(&mut sim, a);
+    let yard_at = yard_spot(&sim, a);
+    ok(&mut sim, Cmd::PlaceBuilding { at: yard_at, kind: B::Shipyard });
+    ok(&mut sim, Cmd::SetShipyardMode { at: yard_at, ships: true });
+    connect(&mut sim, yard_at);
+    sim.debug_add_ware(0, Ware::Boards, 40);
+    sim.debug_add_ware(0, Ware::Stones, 20);
+    run_until(&mut sim, 40_000, |s| !s.ships().is_empty()).expect("ship");
+    ok(&mut sim, Cmd::StartExpedition { harbor: a });
+    run_until(&mut sim, 6000, |s| s.expedition_ready(ha)).expect("expedition ready");
+    ok(&mut sim, Cmd::SendExpedition { harbor: a, to: b });
+    run_until(&mut sim, 6000, |s| s.building_at(b).is_some()).expect("colony");
+    let hb = sim.building_at(b).unwrap();
+    run_until(&mut sim, 20_000, |s| s.building(hb).is_ready()).expect("colony harbor built");
+    // a guardhouse holds the land on island B
+    let g = sim.world().grid();
+    let hbf = g.neighbor(b, SE);
+    let at = g
+        .within(b, 6)
+        .filter(|p| g.distance(*p, b) >= 3)
+        .find(|p| {
+            sim.world().bq_for(*p, 0).allows(rr_world::Bq::Hut)
+                && !sim.military_building_near(*p, 0)
+                && sim.road_path(0, g.neighbor(*p, SE), hbf, &[]).is_some()
+        })
+        .expect("guardhouse spot on the island");
+    ok(&mut sim, Cmd::PlaceBuilding { at, kind: B::Guardhouse });
+    let f = g.neighbor(at, SE);
+    let dirs = sim.road_path(0, f, hbf, &[]).unwrap();
+    ok(&mut sim, Cmd::BuildRoad { from: f, dirs });
+    let gh = sim.building_at(at).unwrap();
+    run_until(&mut sim, 40_000, |s| s.building(gh).is_ready() && !s.building(gh).soldiers.is_empty())
+        .expect("guardhouse manned");
+    // the colony's harbor burns: island B is ours, with no warehouse
+    sim.debug_destroy_building(b);
+    run_until(&mut sim, 3_000, |s| s.building_at(b).is_none() && s.world().owner(b) == Some(0))
+        .expect("the spot ours and free");
+    run_until(&mut sim, 20_000, |s| s.world().bq_for(b, 0).allows(rr_world::Bq::Harbor))
+        .unwrap_or_else(|| panic!("no harbor fits: {:?} {:?}", sim.world().obj(b), sim.world().bq_for(b, 0)));
+    // a harbor placed there as a plain site gets its builder and materials by ship
+    sim.debug_add_ware_at(ha, Ware::Stones, 10);
+    sim.debug_add_ware_at(ha, Ware::Boards, 10);
+    ok(&mut sim, Cmd::PlaceBuilding { at: b, kind: B::Harbor });
+    let site = sim.building_at(b).unwrap();
+    run_until(&mut sim, 30_000, |s| s.building(site).is_ready())
+        .unwrap_or_else(|| panic!("the harbor not built:\n{}", sim.dump_string()));
+    sim.audit().expect("a save made now loads");
+}
+
+/// The owner: an expedition can be given up without losing what it gathered.
+#[test]
+fn a_cancelled_expedition_gives_back_its_materials_and_builder() {
+    let (mut sim, a, _) = islands();
+    let ha = harbor_on_a(&mut sim, a);
+    let yard_at = yard_spot(&sim, a);
+    ok(&mut sim, Cmd::PlaceBuilding { at: yard_at, kind: B::Shipyard });
+    ok(&mut sim, Cmd::SetShipyardMode { at: yard_at, ships: true });
+    connect(&mut sim, yard_at);
+    sim.debug_add_ware(0, Ware::Boards, 30);
+    run_until(&mut sim, 40_000, |s| !s.ships().is_empty()).expect("ship");
+    ok(&mut sim, Cmd::StartExpedition { harbor: a });
+    run_until(&mut sim, 6000, |s| s.expedition_ready(ha)).expect("expedition ready");
+    let inv = sim.player_inventory(0);
+    let before = (inv.ware(Ware::Boards), inv.ware(Ware::Stones), inv.job(rr_rules::Job::Builder));
+    ok(&mut sim, Cmd::CancelExpedition { harbor: a });
+    assert!(sim.building(ha).expedition.is_none(), "given up");
+    let load = sim.expedition_load();
+    let inv = sim.player_inventory(0);
+    assert_eq!(
+        (inv.ware(Ware::Boards), inv.ware(Ware::Stones), inv.job(rr_rules::Job::Builder)),
+        (before.0 + load.0 as u32, before.1 + load.1 as u32, before.2 + 1),
+        "all back in stock"
+    );
+    assert!(sim.ships().iter().all(|(_, s)| s.task == rr_sim::ShipTask::Idle), "the ship free");
+    sim.audit().expect("a save made now loads");
+}

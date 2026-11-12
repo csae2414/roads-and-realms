@@ -53,7 +53,7 @@ fn compose<'a>(stored: &'a str, tr: impl Fn(&'a str) -> &'a str) -> String {
 
 /// The message templates (checked by a test, as they don't go through `tr` literally).
 #[cfg(test)]
-const TEMPLATES: [&str; 98] = [
+const TEMPLATES: [&str; 100] = [
     "Goal: reach {1} allied towns ({2} so far)",
     "Favour: {1} of 100",
     "Offer {1} {2}",
@@ -143,6 +143,8 @@ const TEMPLATES: [&str; 98] = [
     "{1} attacks our {2}",
     "{1} sends {3} soldiers against our {2} ({4} inside)",
     "{1} took our {2}",
+    "{1} soldiers sail to our {2}",
+    "One soldier sails to our {2}",
     "Burned with the lost land: {1} buildings",
     "Your soldiers: {1} in warehouses (they defend only those), {2} in military buildings.",
     "By rank: {1}. Together {2} soldiers with those on the way, {3} points in the chart.",
@@ -1586,6 +1588,8 @@ const DE: &[(&str, &str)] = &[
     ("{1} attacks our {2}", "{1} greift an: {2}"),
     ("{1} sends {3} soldiers against our {2} ({4} inside)", "{1} schickt {3} Soldaten zum Angriff auf {2} ({4} drin)"),
     ("{1} took our {2}", "{1} hat erobert: {2}"),
+    ("{1} soldiers sail to our {2}", "{1} Soldaten segeln zu unserem Gebäude: {2}"),
+    ("One soldier sails to our {2}", "Ein Soldat segelt zu unserem Gebäude: {2}"),
     (
         "💡 Your castle holds {1} soldiers, but they only defend the castle. A guardhouse holds 3, a watchtower 6, a fortress 9: put strong buildings where your rivals' land touches yours.",
         "💡 Deine Burg hat {1} Soldaten, aber die verteidigen nur die Burg. Eine Wachstube fasst 3, ein Wachturm 6, eine Festung 9: Stelle starke Gebäude dorthin, wo das Land der Gegner an deins grenzt.",
@@ -2243,6 +2247,30 @@ const DE: &[(&str, &str)] = &[
     ("Look for map files again", "Nochmals nach Kartendateien suchen"),
     ("Play this map", "Diese Karte spielen"),
     ("⛵ Send the expedition here", "⛵ Expedition hierher schicken"),
+    ("⛵ Prepare an expedition for here", "⛵ Expedition hierher vorbereiten"),
+    ("✖ Cancel the expedition", "✖ Expedition abbrechen"),
+    (
+        "Its boards, stones and builder go back into the harbor's stock.",
+        "Ihre Bretter, Steine und der Bauarbeiter kommen zurück ins Hafenlager.",
+    ),
+    ("A ship brings the builder and the materials.", "Ein Schiff bringt den Bauarbeiter und die Baustoffe."),
+    (
+        "No warehouse on this coast: your nearest harbor gathers a builder, boards and stones, and a ship brings them.",
+        "Kein Lager an dieser Küste: Dein nächster Hafen sammelt einen Bauarbeiter, Bretter und Steine, und ein Schiff bringt sie.",
+    ),
+    ("At the harbor:", "Im Hafen:"),
+    (
+        "Too few stones in your warehouses: a quarry makes more.",
+        "Zu wenige Steine in deinen Lagern: Ein Steinbruch macht neue.",
+    ),
+    (
+        "Too few boards in your warehouses: a sawmill makes more.",
+        "Zu wenige Bretter in deinen Lagern: Ein Sägewerk macht neue.",
+    ),
+    (
+        "Your nearest harbor on this sea loads an expedition; it sails here once it is ready.",
+        "Dein nächster Hafen an diesem Meer belädt eine Expedition; sie segelt hierher, sobald sie bereit ist.",
+    ),
     (
         "No warehouse on this coast, so no builder can come: send an expedition here from one of your harbors.",
         "Kein Lager an dieser Küste, also kommt kein Bauarbeiter: Schicke eine Expedition von einem deiner Häfen hierher.",

@@ -691,6 +691,10 @@ impl Sim {
         // soldiers aboard a sea attack from here are in its keeping (eval: a save made then
         // would not load)
         self.sea_attack_harbor_lost(id, b.player, b.pos);
+        // a harbor site served by ship: the ship on its way there turns back empty
+        if b.kind == BuildingType::Harbor && !b.is_ready() {
+            self.harbor_site_lost(b.player, b.pos);
+        }
         // a loaded expedition ship looks for another harbor
         if let Some(s) = b.expedition.as_ref().and_then(|e| e.ship)
             && self.ships.contains(s)
@@ -1191,6 +1195,14 @@ impl Sim {
             want[Ware::Stones.index()] = want[Ware::Stones.index()].max(cost.1 - e.stones);
         }
         let me = self.building_at(b.pos);
+        // and what the harbor sites it serves over the sea still need (`harbor_site_by_sea`)
+        for (site, _) in self.buildings.iter().filter(|(_, x)| x.player == b.player && x.kind == BuildingType::Harbor) {
+            if me.is_some() && self.sea_site_source(site) == me {
+                let (boards, stones) = self.sea_site_need(site);
+                want[Ware::Boards.index()] = want[Ware::Boards.index()].saturating_add(boards as u8);
+                want[Ware::Stones.index()] = want[Ware::Stones.index()].saturating_add(stones as u8);
+            }
+        }
         let mut out = Vec::new();
         for w in Ware::ALL {
             let n = want[w.index()] as u32;
@@ -1660,6 +1672,13 @@ impl Sim {
                     {
                         self.buildings[b].worker_coming = true;
                         self.spawn_from_warehouse(wh, Job::Builder, FigKind::Builder { site: b });
+                    } else if self.buildings[b].kind == BuildingType::Harbor
+                        && s.builder.is_none()
+                        && !coming
+                        && has_harbor
+                    {
+                        // no warehouse on this coast: builder and materials come by ship
+                        self.harbor_site_by_sea(b);
                     }
                 }
                 BState::Ready => {

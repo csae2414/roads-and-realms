@@ -604,6 +604,7 @@ impl Sim {
         }
         if sent > 0 {
             self.start_sea_attack(&plan, b, sent);
+            self.events.push(Event::SoldiersBySea { player, at: pos, soldiers: sent });
         }
     }
 
@@ -896,9 +897,16 @@ impl Sim {
                     call = true;
                 }
             }
+            let builder = e.builder;
             self.buildings[h].expedition = Some(e);
             if call {
                 self.call_ship(h);
+            }
+            // none to be had here: one walks over from a warehouse on its roads (RTTR
+            // nobHarborBuilding orders a builder; the owner's expedition waited for ever)
+            if !builder {
+                let player = self.buildings[h].player;
+                self.send_person_to_harbor(player, Job::Builder, h, 1);
             }
         }
         // ship goods: one destination per trip
@@ -1243,6 +1251,31 @@ impl Sim {
         true
     }
 
+    /// `Cmd::CancelExpedition`: the expedition at the harbor at `at` is given up; what it has
+    /// gathered goes back into the stock, and its ship, if one is waiting, is free (the owner:
+    /// "abort an expedition, not losing the material and personnel").
+    pub(crate) fn cmd_cancel_expedition(&mut self, player: PlayerId, at: MapCoord) -> Result<(), RejectReason> {
+        let h = self.building_at(at).ok_or(RejectReason::NotFound)?;
+        let b = &self.buildings[h];
+        if b.player != player || b.kind != BuildingType::Harbor || !b.is_ready() {
+            return Err(RejectReason::NotAllowed);
+        }
+        let e = self.buildings[h].expedition.take().ok_or(RejectReason::NotAllowed)?;
+        let inv = self.buildings[h].inventory.as_mut().expect("harbor stock");
+        inv.wares[Ware::Boards.index()] += e.boards as u32;
+        inv.wares[Ware::Stones.index()] += e.stones as u32;
+        if e.builder {
+            inv.jobs[Job::Builder.index()] += 1;
+        }
+        if let Some(s) = e.ship
+            && self.ships.contains(s)
+        {
+            self.ships[s].task = ShipTask::Idle;
+            self.ship_wake(s, 1);
+        }
+        Ok(())
+    }
+
     pub(crate) fn cmd_start_expedition(&mut self, player: PlayerId, at: MapCoord) -> Result<(), RejectReason> {
         let h = self.building_at(at).ok_or(RejectReason::NotFound)?;
         let b = &self.buildings[h];
@@ -1362,10 +1395,139 @@ impl Sim {
         }
     }
 
+    /// A harbor site of ours on a coast with no warehouse of ours (an island won by a sea attack):
+    /// a builder and the harbor's materials come by ship from the nearest harbor of ours on that
+    /// sea that has them, without the expedition's starter kit (the owner: "how can I bring a
+    /// settler + wood and stone to the harbor"). The materials are booked to the site when the
+    /// ship leaves; it sails as an expedition to the spot, where the builder steps ashore.
+    pub(crate) fn harbor_site_by_sea(&mut self, b: BuildingId) {
+        let (player, spot) = (self.buildings[b].player, self.buildings[b].pos);
+        let Some(h) = self.sea_site_source(b) else { return };
+        let cost = self.rules.building(BuildingType::Harbor).cost();
+        let need = self.sea_site_need(b);
+        let rules = self.rules.clone();
+        // (the harbor asks for the wares that are missing, `harbor_needs`, and a builder)
+        let inv = self.buildings[h].inventory.as_ref().expect("harbor stock");
+        if !inv.can_supply(Job::Builder, &rules) {
+            self.send_person_to_harbor(player, Job::Builder, h, 1);
+            return;
+        }
+        if inv.wares[Ware::Boards.index()] < need.0 || inv.wares[Ware::Stones.index()] < need.1 {
+            return;
+        }
+        // a ship lying at that harbor, or one called there for the next pass
+        let ship = self
+            .ships
+            .iter()
+            .find(|(_, s)| s.player == player && s.docked == Some(h) && s.task == ShipTask::Idle && s.path.is_empty())
+            .map(|(id, _)| id);
+        let Some(s) = ship else {
+            self.call_ship(h);
+            return;
+        };
+        let Some(coast) = self.harbor_coast(spot) else { return };
+        let inv = self.buildings[h].inventory.as_mut().expect("harbor stock");
+        inv.wares[Ware::Boards.index()] -= need.0;
+        inv.wares[Ware::Stones.index()] -= need.1;
+        inv.take_person(Job::Builder, &rules);
+        if let BState::Site(site) = &mut self.buildings[b].state {
+            site.boards = cost.0;
+            site.stones = cost.1;
+            site.planing = false;
+            site.to_level.clear();
+        }
+        self.buildings[b].worker_coming = true;
+        self.ships[s].task = ShipTask::Expedition { target: Some(spot) };
+        self.ships[s].docked = None;
+        if !self.ship_sail(s, coast) {
+            self.ship_wake(s, 1);
+        }
+    }
+
+    /// The harbor that serves harbor site `b` over the sea (`harbor_site_by_sea`): our nearest
+    /// harbor on its sea, on another land, while the site waits for its builder and no
+    /// warehouse of ours stands on its land and no ship is on its way.
+    pub fn sea_site_source(&self, b: BuildingId) -> Option<BuildingId> {
+        let bd = self.buildings.get(b)?;
+        let BState::Site(site) = &bd.state else { return None };
+        let (player, spot) = (bd.player, bd.pos);
+        if bd.kind != BuildingType::Harbor || site.builder.is_some() || bd.worker_coming {
+            return None;
+        }
+        let store_here = self
+            .buildings
+            .iter()
+            .any(|(_, w)| w.player == player && w.inventory.is_some() && self.same_land(w.pos, spot));
+        let sailing =
+            self.ships.iter().any(|(_, s)| s.player == player && s.task == ShipTask::Expedition { target: Some(spot) });
+        if store_here || sailing {
+            return None;
+        }
+        let sea = self.harbor_sea(spot)?;
+        let g = self.world.grid();
+        self.harbors_at(player, sea)
+            .into_iter()
+            .filter(|h| !self.same_land(self.buildings[*h].pos, spot))
+            .min_by_key(|h| (g.distance(self.buildings[*h].pos, spot), h.index()))
+    }
+
+    /// The boards and stones harbor site `b` still lacks.
+    pub(crate) fn sea_site_need(&self, b: BuildingId) -> (u32, u32) {
+        let cost = self.rules.building(BuildingType::Harbor).cost();
+        match &self.buildings[b].state {
+            BState::Site(s) => (cost.0.saturating_sub(s.boards) as u32, cost.1.saturating_sub(s.stones) as u32),
+            _ => (0, 0),
+        }
+    }
+
+    /// A harbor site served by ship is gone: the ship on its way there turns back empty.
+    pub(crate) fn harbor_site_lost(&mut self, player: PlayerId, spot: MapCoord) {
+        let ships: Vec<ShipId> = self
+            .ships
+            .iter()
+            .filter(|(_, s)| s.player == player && s.task == ShipTask::Expedition { target: Some(spot) })
+            .map(|(id, _)| id)
+            .collect();
+        for s in ships {
+            self.ships[s].task = ShipTask::Idle;
+            self.ship_wake(s, 1);
+        }
+    }
+
     /// The expedition lands: a harbor site with all materials and a builder (RTTR FoundColony).
+    /// On a harbor site of ours already there (one served by ship, `harbor_site_by_sea`, or the
+    /// player's own), the builder steps ashore to build it.
     fn found_colony(&mut self, s: ShipId, spot: MapCoord) {
         let player = self.ships[s].player;
         let se = self.world.grid().neighbor(spot, Direction::SE);
+        let ours = self.building_at(spot).filter(|b| {
+            let bd = &self.buildings[*b];
+            bd.player == player
+                && bd.kind == BuildingType::Harbor
+                && matches!(&bd.state, BState::Site(x) if x.builder.is_none())
+        });
+        if let Some(b) = ours {
+            let cost = self.rules.building(BuildingType::Harbor).cost();
+            let booked = self.buildings[b].worker_coming;
+            if let BState::Site(site) = &mut self.buildings[b].state {
+                // an expedition brings it all, and its starter kit
+                if !booked {
+                    site.from_sea = true;
+                }
+                site.boards = cost.0;
+                site.stones = cost.1;
+                site.planing = false;
+                site.to_level.clear();
+            }
+            let f = self.new_figure(player, Job::Builder, spot, FigKind::Builder { site: b });
+            self.buildings[b].worker_coming = true;
+            let key = self.schedule(5, Ev::Figure(f));
+            self.figures[f].ev = Some(key);
+            self.territory_dirty = true;
+            self.ships[s].task = ShipTask::Idle;
+            self.ship_wake(s, 100);
+            return;
+        }
         if !self.colony_spot_free(player, spot) {
             // spot taken meanwhile: back to a harbor, to wait for a new target there
             self.events.push(Event::NoResources { player, at: spot });

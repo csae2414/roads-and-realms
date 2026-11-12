@@ -255,9 +255,9 @@ impl Sim {
     fn target_known(&self, player: PlayerId, t: BuildingId) -> bool {
         match self.visibility(player, self.buildings[t].pos) {
             crate::Visibility::Visible => true,
-            crate::Visibility::Fog => {
-                self.attack_sources(player, t).is_empty() && self.sea_attack_plan(player, t).is_some()
-            }
+            // (by sea also when posts of ours could walk there but have fewer to send: the
+            // owner's game, 0.10.60, where half the targets were out of sight)
+            crate::Visibility::Fog => self.sea_route(player, t).is_some(),
             crate::Visibility::Unexplored => false,
         }
     }

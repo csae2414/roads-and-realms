@@ -1171,7 +1171,17 @@ pub fn windows(app: &mut App, ctx: &egui::Context) {
 /// A harbor spot clicked: send a waiting expedition there (true: the window closes), on free
 /// land or on our own land on another coast (an island won by a sea attack has no warehouse, so
 /// nobody comes to build there; the owner, 0.10.59), and say so where only an expedition helps.
-fn expedition_spot(ui: &mut egui::Ui, sim: &rr_sim::Sim, me: u8, node: MapCoord, cmds: &mut Vec<Cmd>) -> bool {
+/// With none ready, one may be prepared at our nearest harbor on that sea for this spot: `plan`
+/// (harbor, spot) sends it once it is loaded (the owner: "I can still build no harbour by
+/// expedition on this land").
+fn expedition_spot(
+    ui: &mut egui::Ui,
+    sim: &rr_sim::Sim,
+    me: u8,
+    node: MapCoord,
+    cmds: &mut Vec<Cmd>,
+    plan: &mut Option<(MapCoord, MapCoord, u32)>,
+) -> bool {
     let world = sim.world();
     let ready = sim
         .buildings()
@@ -1193,7 +1203,58 @@ fn expedition_spot(ui: &mut egui::Ui, sim: &rr_sim::Sim, me: u8, node: MapCoord,
             "No warehouse on this coast, so no builder can come: send an expedition here from one of your harbors.",
         ));
     }
+    // none ready: prepare one at our nearest harbor on this sea, to sail here once loaded
+    let g = world.grid();
+    let harbor = sim
+        .buildings()
+        .iter()
+        .filter(|(_, b)| {
+            b.player == me
+                && b.kind == B::Harbor
+                && b.is_ready()
+                && sim.harbor_sea(b.pos) == sim.harbor_sea(node)
+                && !sim.same_land(b.pos, node)
+        })
+        .min_by_key(|(id, b)| (g.distance(b.pos, node), id.index()));
+    if ready.is_none()
+        && (world.owner(node).is_none() || world.owner(node) == Some(me))
+        && sim.colony_spot_free(me, node)
+        && let Some((_, h)) = harbor
+        && ui
+            .button(crate::i18n::tr("⛵ Prepare an expedition for here"))
+            .on_hover_text(crate::i18n::tr(
+                "Your nearest harbor on this sea loads an expedition; it sails here once it is ready.",
+            ))
+            .clicked()
+    {
+        if h.expedition.is_none() {
+            cmds.push(Cmd::StartExpedition { harbor: h.pos });
+        }
+        *plan = Some((h.pos, node, sim.gf().0));
+        sent = true;
+    }
     sent
+}
+
+/// With the keyboard cursor: 1-9 pick a building, F a flag, T the next tab.
+fn action_keys(app: &App, ctx: &egui::Context) -> (Option<usize>, bool, bool) {
+    if app.session.cursor.is_none() || ctx.wants_keyboard_input() {
+        return (None, false, false);
+    }
+    ctx.input(|i| {
+        let digits = [
+            egui::Key::Num1,
+            egui::Key::Num2,
+            egui::Key::Num3,
+            egui::Key::Num4,
+            egui::Key::Num5,
+            egui::Key::Num6,
+            egui::Key::Num7,
+            egui::Key::Num8,
+            egui::Key::Num9,
+        ];
+        (digits.iter().position(|k| i.key_pressed(*k)), i.key_pressed(egui::Key::F), i.key_pressed(egui::Key::T))
+    })
 }
 
 #[allow(clippy::too_many_lines)] // to split (architect round 2, #8: no new long ones)
@@ -1209,25 +1270,7 @@ fn action_window(app: &mut App, ctx: &egui::Context) {
     let mut start_road = None;
     let mut work_area = None;
     let auto_road = app.auto_road;
-    // with the keyboard cursor: 1-9 pick a building, F a flag, T the next tab
-    let (digit, key_flag, key_tab) = if app.session.cursor.is_some() && !ctx.wants_keyboard_input() {
-        ctx.input(|i| {
-            let digits = [
-                egui::Key::Num1,
-                egui::Key::Num2,
-                egui::Key::Num3,
-                egui::Key::Num4,
-                egui::Key::Num5,
-                egui::Key::Num6,
-                egui::Key::Num7,
-                egui::Key::Num8,
-                egui::Key::Num9,
-            ];
-            (digits.iter().position(|k| i.key_pressed(*k)), i.key_pressed(egui::Key::F), i.key_pressed(egui::Key::T))
-        })
-    } else {
-        (None, false, false)
-    };
+    let (digit, key_flag, key_tab) = action_keys(app, ctx);
     let keyboard = app.session.cursor.is_some();
     // building pictures for the build tabs (the original shows pictures, cost on hover)
     let nation = sim.players()[me as usize].setup.nation as u8;
@@ -1249,6 +1292,7 @@ fn action_window(app: &mut App, ctx: &egui::Context) {
     let mut new_tab = None;
     let mut follow = None;
     let mut attack = app.ui.attack;
+    let mut expedition_for = None;
     let title: String = match world.obj(node) {
         NodeObj::Building(_) => sim
             .building_at(node)
@@ -1308,7 +1352,7 @@ fn action_window(app: &mut App, ctx: &egui::Context) {
                 return;
             }
             // an expedition waiting for a target can land on a free harbor spot
-            if world.is_harbor_spot(node) && expedition_spot(ui, sim, me, node, &mut cmds) {
+            if world.is_harbor_spot(node) && expedition_spot(ui, sim, me, node, &mut cmds, &mut expedition_for) {
                 close = true;
             }
             if world.owner(node) != Some(me) {
@@ -1479,6 +1523,9 @@ fn action_window(app: &mut App, ctx: &egui::Context) {
         });
     app.session.work_area = work_area;
     app.ui.attack = attack;
+    if expedition_for.is_some() {
+        app.session.expedition_for = expedition_for;
+    }
     if follow.is_some() {
         app.session.follow = follow;
     }
@@ -2267,7 +2314,31 @@ fn harbor_panel(app: &App, ui: &mut egui::Ui, b: rr_sim::BuildingId, cmds: &mut 
             if e.boards == load.0 && e.stones == load.1 && e.builder {
                 ui.label(crate::i18n::tr("Waiting for a ship."));
             }
+            // too few left anywhere: say what is missing (the owner's game: 10 of 12 stones for an
+            // hour, no quarry and none in stock, and nothing said why)
+            let stock = sim.player_inventory(me);
+            if e.stones < load.1 && stock.ware(Ware::Stones) < u32::from(load.1 - e.stones) {
+                ui.label(
+                    RichText::new(crate::i18n::tr("Too few stones in your warehouses: a quarry makes more."))
+                        .color(Color32::from_rgb(240, 190, 120)),
+                );
+            }
+            if e.boards < load.0 && stock.ware(Ware::Boards) < u32::from(load.0 - e.boards) {
+                ui.label(
+                    RichText::new(crate::i18n::tr("Too few boards in your warehouses: a sawmill makes more."))
+                        .color(Color32::from_rgb(240, 190, 120)),
+                );
+            }
         }
+    }
+    // given up: what it gathered goes back into the stock (the owner)
+    if bd.expedition.is_some()
+        && ui
+            .button(crate::i18n::tr("✖ Cancel the expedition"))
+            .on_hover_text(crate::i18n::tr("Its boards, stones and builder go back into the harbor's stock."))
+            .clicked()
+    {
+        cmds.push(Cmd::CancelExpedition { harbor: bd.pos });
     }
     let ships = sim.ships().iter().filter(|(_, s)| s.player == me && s.docked == Some(b)).count();
     ui.label(format!("{} {ships}", crate::i18n::tr("Ships here:")));
@@ -2306,10 +2377,22 @@ pub(crate) fn known_free_spots(app: &App, harbor: MapCoord) -> Vec<MapCoord> {
     let sim = &app.sim;
     let Some(sea) = sim.harbor_sea(harbor) else { return Vec::new() };
     let g = sim.world().grid();
+    let me = app.player;
+    // and free spots on our own land where no warehouse of ours stands (an island won by a sea
+    // attack: the owner saw no anchor there)
+    let stores: Vec<MapCoord> =
+        sim.buildings().iter().filter(|(_, b)| b.player == me && b.inventory.is_some()).map(|(_, b)| b.pos).collect();
+    let ours = sim.world().harbor_spots().into_iter().filter(|p| {
+        sim.harbor_sea(*p) == Some(sea)
+            && sim.world().owner(*p) == Some(me)
+            && sim.colony_spot_free(me, *p)
+            && !stores.iter().any(|w| sim.same_land(*w, *p))
+    });
     let mut spots: Vec<MapCoord> = sim
-        .free_harbor_spots(app.player, sea)
+        .free_harbor_spots(me, sea)
         .into_iter()
-        .filter(|p| sim.visibility(app.player, *p) != rr_sim::Visibility::Unexplored)
+        .chain(ours)
+        .filter(|p| sim.visibility(me, *p) != rr_sim::Visibility::Unexplored)
         .collect();
     spots.sort_by_key(|p| (g.distance(harbor, *p), p.y, p.x));
     spots
@@ -2349,6 +2432,56 @@ fn owner_line(sim: &rr_sim::Sim, p: u8) -> String {
     crate::i18n::fill("Belongs to {1}", &[&rr_game::plain(&sim.players()[p as usize].setup.name)])
 }
 
+/// A harbor site of ours on a coast with no warehouse of ours: what comes by ship, and a ready
+/// expedition may be sent here (the owner: "how can I bring a settler + wood and stone").
+fn sea_site_panel(app: &App, ui: &mut egui::Ui, b: rr_sim::BuildingId, cmds: &mut Vec<Cmd>) {
+    let (sim, me) = (&app.sim, app.player);
+    let spot = sim.building(b).pos;
+    if sim.building(b).kind != B::Harbor || sim.building(b).site().is_none_or(|s| s.builder.is_some()) {
+        return;
+    }
+    let store_here =
+        sim.buildings().iter().any(|(_, w)| w.player == me && w.inventory.is_some() && sim.same_land(w.pos, spot));
+    if store_here {
+        return;
+    }
+    let sailing = sim
+        .ships()
+        .iter()
+        .any(|(_, s)| s.player == me && s.task == rr_sim::ShipTask::Expedition { target: Some(spot) });
+    if sailing {
+        ui.label(crate::i18n::tr("A ship brings the builder and the materials."));
+        return;
+    }
+    ui.label(crate::i18n::tr(
+        "No warehouse on this coast: your nearest harbor gathers a builder, boards and stones, and a ship brings them.",
+    ));
+    if let Some(h) = sim.sea_site_source(b) {
+        let hb = sim.building(h);
+        let inv = hb.inventory.as_ref().expect("harbor stock");
+        let cost = sim.rules().building(B::Harbor);
+        ui.label(format!(
+            "{} {}/{} {}, {}/{} {}",
+            crate::i18n::tr("At the harbor:"),
+            inv.ware(rr_rules::Ware::Boards).min(cost.boards as u32),
+            cost.boards,
+            crate::i18n::tr("boards"),
+            inv.ware(rr_rules::Ware::Stones).min(cost.stones as u32),
+            cost.stones,
+            crate::i18n::tr("stones"),
+        ));
+    }
+    let ready = sim
+        .buildings()
+        .iter()
+        .find(|(id, h)| h.player == me && sim.expedition_ready(*id) && sim.harbor_sea(h.pos) == sim.harbor_sea(spot));
+    if let Some((_, h)) = ready
+        && ui.button(crate::i18n::tr("⛵ Send the expedition here")).clicked()
+    {
+        cmds.push(Cmd::SendExpedition { harbor: h.pos, to: spot });
+    }
+}
+
 #[allow(clippy::too_many_lines)] // to split (architect round 2, #8: no new long ones)
 fn building_info(
     app: &App,
@@ -2359,10 +2492,9 @@ fn building_info(
     follow: &mut Option<rr_sim::FigId>,
     attack: &mut AttackPanel,
 ) {
-    let sim = &app.sim;
+    let (sim, me) = (&app.sim, app.player);
     let bd = sim.building(b);
     let def = sim.rules().building(bd.kind);
-    let me = app.player;
     building_view(app, ui, bd.pos);
     if bd.player != me {
         ui.label(owner_line(sim, bd.player));
@@ -2397,6 +2529,7 @@ fn building_info(
             } else if s.builder.is_none() {
                 ui.label(crate::i18n::tr("Waiting for a builder."));
             }
+            sea_site_panel(app, ui, b, cmds);
         }
         BState::Ready => {
             if bd.kind == B::Harbor {
