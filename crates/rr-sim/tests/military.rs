@@ -157,6 +157,46 @@ fn defenders_intercept_attackers_in_the_open() {
     assert!(intercepted, "nobody came out to meet the attackers");
 }
 
+/// The owner's game: a defender who won out in the open walked home while the attack on his
+/// building went on; now he takes on the next attacker close by first (RTTR FindAggressor).
+/// The barracks can spare one soldier: four attackers, one of them met in the open.
+#[test]
+fn a_defender_who_wins_in_the_open_takes_on_the_next_attacker() {
+    let (h0, h1) = (c(14, 20), c(46, 20));
+    let mut sim = sim_with(&[h0, h1]);
+    sim.debug_take_ware(1, rr_rules::Ware::Beer, 99);
+    ok(&mut sim, 1, Cmd::SetMilitary { values: [10, 3, 5, 3, 8, 8, 8, 8] });
+    let target = build(&mut sim, 1, B::Barracks, c(38, 20), h1);
+    let g0 = build(&mut sim, 0, B::Guardhouse, c(21, 20), h0);
+    run_until(&mut sim, 30_000, |s| s.building(g0).soldiers.len() == 3 && s.building(target).soldiers.len() == 2)
+        .expect("garrisons");
+    let g1 = build(&mut sim, 0, B::Guardhouse, c(28, 20), h0);
+    run_until(&mut sim, 20_000, |s| s.building(g1).soldiers.len() == 3).expect("second guardhouse manned");
+    ok(&mut sim, 0, Cmd::SetMilitary { values: [10, 5, 5, 5, 8, 8, 8, 8] });
+    let at = sim.building(target).pos;
+    ok(&mut sim, 0, Cmd::Attack { target: at, soldiers: 4, strong: true });
+    // weak attackers: the defenders win
+    let mut chased: std::collections::BTreeMap<rr_sim::FigId, std::collections::BTreeSet<rr_sim::FigId>> =
+        Default::default();
+    for _ in 0..8000 {
+        sim.step(&[]);
+        let figs: Vec<_> = sim.figures().iter().map(|(id, f)| (id, f.player, f.kind.clone())).collect();
+        for (id, player, kind) in figs {
+            match kind {
+                rr_sim::FigKind::Soldier(rr_sim::SoldierTask::Attack { .. }) if player == 0 => sim.debug_set_hp(id, 1),
+                rr_sim::FigKind::Soldier(rr_sim::SoldierTask::Intercept { attacker, .. }) => {
+                    chased.entry(id).or_default().insert(attacker);
+                }
+                _ => {}
+            }
+        }
+        if chased.values().any(|a| a.len() >= 2) {
+            return;
+        }
+    }
+    panic!("no defender took on a second attacker: {chased:?}");
+}
+
 /// Roast finding: after the HQ falls, giving up the last military building ends the player.
 #[test]
 fn losing_the_last_military_building_defeats() {

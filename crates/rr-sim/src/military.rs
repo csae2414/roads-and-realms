@@ -31,6 +31,18 @@ pub enum SoldierTask {
     ToShip { ship: crate::ShipId, target: BuildingId, home: BuildingId },
 }
 
+impl FigKind {
+    /// The building an attacker walks to or waits at.
+    pub(crate) fn attack_target(&self) -> Option<BuildingId> {
+        match self {
+            FigKind::Soldier(SoldierTask::Attack { target, .. } | SoldierTask::AtTarget { target, .. }) => {
+                Some(*target)
+            }
+            _ => None,
+        }
+    }
+}
+
 /// An ongoing duel.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Fights {
@@ -95,16 +107,24 @@ impl Sim {
                 self.figures[f].motion = Motion::Idle;
             }
             SoldierTask::Intercept { attacker, home } => {
+                // (still attacking: one who took the building meanwhile has moved in)
                 let ok = self.figures.get(attacker).is_some_and(|a| {
-                    self.world.grid().distance(a.pos, self.figures[f].pos) <= 1
+                    a.kind.attack_target().is_some()
+                        && a.inside.is_none()
+                        && self.world.grid().distance(a.pos, self.figures[f].pos) <= 1
                         && !self.military.field.contains_key(&attacker)
+                        && !self.military.duels.values().any(|d| d.0 == attacker)
                 });
                 if ok {
                     let first = self.rng(2 << 60 | attacker.index() as u64 ^ 0x5eed, Purpose::Fight).below(2) as u8;
                     self.military.field.insert(attacker, (f, self.gf + ROUND_GF, first));
                     self.events.push(Event::Sound { at: self.figures[f].pos, sound: SoundCue::Sword });
                 } else {
-                    self.soldier_return(f, home);
+                    // that one is busy: another attacker of the same building nearby, or home
+                    let target = self.figures.get(attacker).and_then(|a| a.kind.attack_target());
+                    if !target.is_some_and(|t| self.intercept_next(f, t, home)) {
+                        self.soldier_return(f, home);
+                    }
                 }
             }
             SoldierTask::AtTarget { .. } | SoldierTask::Defend(_) | SoldierTask::Garrison(_) => {
@@ -654,12 +674,32 @@ impl Sim {
         // forget attackers that are gone (they could be re-used ids otherwise)
         let figures = &self.figures;
         self.military.hunted.retain(|f| figures.contains(*f));
+        // an attacker waiting for a defender who never came (he lost his home): walks on
+        let stuck: Vec<FigId> = self
+            .military
+            .hunted
+            .iter()
+            .copied()
+            .filter(|a| {
+                let f = &self.figures[*a];
+                matches!(f.kind, FigKind::Soldier(SoldierTask::Attack { .. }))
+                    && matches!(f.motion, Motion::Idle)
+                    && f.ev.is_none()
+                    && !f.path.is_empty()
+            })
+            .collect();
+        for a in stuck {
+            if !self.is_chased(a) {
+                self.figure_continue(a);
+            }
+        }
         // attackers waiting at targets
         let mut waiting: BTreeMap<BuildingId, Vec<FigId>> = BTreeMap::new();
         for (id, f) in self.figures.iter() {
             if let FigKind::Soldier(SoldierTask::AtTarget { target, .. }) = f.kind
                 && f.path.is_empty()
                 && matches!(f.motion, Motion::Idle)
+                && !self.military.field.contains_key(&id)
             {
                 waiting.entry(target).or_default().push(id);
             }
@@ -873,9 +913,14 @@ impl Sim {
                 }
                 Some(false) => {
                     self.military.field.remove(&att);
+                    let target = self.figures[att].kind.attack_target();
                     self.kill_figure(att);
                     self.figures[def].motion = Motion::Idle;
-                    if let FigKind::Soldier(SoldierTask::Intercept { home, .. }) = self.figures[def].kind.clone() {
+                    // the winner takes on the next attacker close by before going home
+                    // (RTTR nofAggressiveDefender::MissionAggressiveDefendingLookForNewAggressor)
+                    if let FigKind::Soldier(SoldierTask::Intercept { home, .. }) = self.figures[def].kind.clone()
+                        && !target.is_some_and(|t| self.intercept_next(def, t, home))
+                    {
                         self.soldier_return(def, home);
                     }
                 }
@@ -892,6 +937,11 @@ impl Sim {
     /// must stop and wait for the fight.
     pub(crate) fn try_hunt(&mut self, f: FigId, target: BuildingId) -> bool {
         if self.military.hunted.contains(&f) {
+            // a defender who won nearby comes for it: it waits for him
+            if self.is_chased(f) {
+                self.figures[f].motion = Motion::Idle;
+                return true;
+            }
             return false;
         }
         let pos = self.figures[f].pos;
@@ -939,6 +989,59 @@ impl Sim {
             self.military.hunted.insert(f);
             // the attacker waits where it stands
             self.figures[f].motion = Motion::Idle;
+            return true;
+        }
+        false
+    }
+
+    /// Whether a defender is on its way to attacker `a`, or fighting it in the open.
+    fn is_chased(&self, a: FigId) -> bool {
+        self.military.field.contains_key(&a)
+            || self.figures.iter().any(
+                |(_, f)| matches!(f.kind, FigKind::Soldier(SoldierTask::Intercept { attacker, .. }) if attacker == a),
+            )
+    }
+
+    /// An intercepting defender free again takes on another attacker of `target` (RTTR
+    /// nobBaseMilitary::FindAggressor): one walking there or waiting at it, not fighting, with no
+    /// other defender after it, within 5 nodes and a path of at most 5 (6 to the node a walking
+    /// one stops at). False if there is none.
+    fn intercept_next(&mut self, def: FigId, target: BuildingId, home: BuildingId) -> bool {
+        if !self.buildings.contains(target) {
+            return false;
+        }
+        let pos = self.figures[def].pos;
+        let g = self.world.grid();
+        let in_duel: std::collections::BTreeSet<FigId> = self.military.duels.values().map(|d| d.0).collect();
+        let cands: Vec<FigId> = self
+            .figures
+            .iter()
+            .filter(|(id, f)| {
+                f.kind.attack_target() == Some(target)
+                    && f.inside.is_none()
+                    && !in_duel.contains(id)
+                    && g.distance(f.pos, pos) <= 5
+            })
+            .map(|(id, _)| id)
+            .collect();
+        for a in cands {
+            if self.is_chased(a) {
+                continue;
+            }
+            let fa = &self.figures[a];
+            // a walking attacker stops at the node it steps onto
+            let meet = match fa.motion {
+                Motion::Walk { dir, .. } if matches!(fa.kind, FigKind::Soldier(SoldierTask::Attack { .. })) => {
+                    g.neighbor(fa.pos, dir)
+                }
+                _ => fa.pos,
+            };
+            let Some(path) = self.find_path(pos, meet, 200).filter(|p| p.len() <= 6) else { continue };
+            self.figures[def].kind = FigKind::Soldier(SoldierTask::Intercept { attacker: a, home });
+            self.figures[def].path = path.into_iter().rev().collect();
+            self.figures[def].step = Step::Go;
+            self.figure_continue(def);
+            self.military.hunted.insert(a);
             return true;
         }
         false
